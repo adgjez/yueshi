@@ -104,6 +104,10 @@ import kotlinx.coroutines.withContext
 
 class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlayerViewModel>(),
     SettingsDialog.CallBack,RssFavoritesDialog.Callback {
+    companion object {
+        const val EXTRA_PREPARE_BOOK_INFO = "prepareBookInfo"
+    }
+
     override val binding by viewBinding(ActivityVideoPlayerBinding::inflate)
     override val viewModel by viewModels<VideoPlayerViewModel>()
     private val playerView: VideoPlayer by lazy { binding.playerView }
