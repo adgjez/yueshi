@@ -35,6 +35,7 @@ import java.nio.charset.Charset
 class EpubFile(var book: Book) {
 
     companion object : BaseLocalBookParse {
+        const val NATIVE_CONTENT_FLAG = "<epub-native"
         private var eFile: EpubFile? = null
 
         @Synchronized

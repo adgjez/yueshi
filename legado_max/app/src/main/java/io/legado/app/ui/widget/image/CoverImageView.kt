@@ -67,6 +67,21 @@ class CoverImageView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : AppCompatImageView(context, attrs) {
+
+    enum class CoverStyle(
+        val radiusDp: Float,
+        val elevationDp: Float,
+        val strokeWidthDp: Float,
+        val strokeAlpha: Float
+    ) {
+        FLAT(8f, 0f, 0f, 0f),
+        COMPACT(7f, 1f, 0f, 0f),
+        LIST(8f, 1.5f, 0f, 0f),
+        GRID(8f, 2f, 0f, 0f),
+        DETAIL(12f, 5f, 0f, 0f),
+        PREVIEW(10f, 6f, 0f, 0f)
+    }
+
     companion object {
         private val _nameBitmapCache by lazy { LruCache<String, Bitmap>(33) }
         private val _needNameBitmap by lazy { LruCache<String, Boolean>(99) }

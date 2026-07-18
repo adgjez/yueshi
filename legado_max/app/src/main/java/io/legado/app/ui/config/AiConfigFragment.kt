@@ -325,8 +325,7 @@ class AiConfigFragment : ComposeSettingFragment() {
         val root = File(requireContext().filesDir, "ai_workspace").apply { mkdirs() }
         startActivity(
             Intent(requireContext(), FileManageActivity::class.java)
-                .putExtra(FileManageActivity.EXTRA_ROOT_PATH, root.absolutePath)
-                .putExtra(FileManageActivity.EXTRA_TITLE, "AI 工作区")
+                .putExtra(FileManageActivity.EXTRA_INITIAL_PATH, root.absolutePath)
         )
     }
 

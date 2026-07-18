@@ -6,8 +6,6 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContract
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.SearchBook
-import io.legado.app.help.config.BookInfoComponentConfig
-import io.legado.app.help.config.BookInfoPageStyle
 
 object BookInfoNavigator {
 
@@ -58,11 +56,7 @@ object BookInfoNavigator {
     }
 
     fun targetClass(): Class<*> {
-        return if (BookInfoComponentConfig.loadStyle() == BookInfoPageStyle.IMMERSIVE_COMPOSE) {
-            BookInfoComposeActivity::class.java
-        } else {
-            BookInfoActivity::class.java
-        }
+        return BookInfoActivity::class.java
     }
 
     private fun baseIntent(context: Context): Intent {

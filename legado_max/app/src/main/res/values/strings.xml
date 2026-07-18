@@ -44,6 +44,7 @@
     <string name="replace_purify_desc">Configure replacement rules</string>
     <string name="not_available">Not available now</string>
     <string name="enable">Enable</string>
+    <string name="disable">Disable</string>
     <string name="replace_purify_search">Search Replacement</string>
     <string name="bookshelf">Bookshelf</string>
     <string name="favorites">Favorites</string>
@@ -617,6 +618,7 @@
     <string name="search_help">Search Help</string>
     <string name="my">Me</string>
     <string name="reading">Read</string>
+    <string name="ai">AI</string>
     <string name="battery_show">%d%%</string>
     <string name="timer_m">%d min</string>
     <string name="brightness_auto">Auto-Brightness %s</string>
@@ -2342,4 +2344,5 @@
 
     Selected text or question:
     %6$s</string>
+    <string name="unknown">Unknown</string>
 </resources>

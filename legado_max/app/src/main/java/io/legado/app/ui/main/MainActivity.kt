@@ -678,8 +678,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                         target.x = (downX + dx).coerceIn(0f, (parent.width - target.width).toFloat())
                         val topLimit = 12.dpToPx().toFloat()
                         val bottomLimit = (aiFloatingBallBottomBound() - target.height - 12.dpToPx())
-                            .coerceAtLeast(12.dpToPx())
-                            .toFloat()
+                            .coerceAtLeast(topLimit)
                         target.y = (downY + dy).coerceIn(topLimit, bottomLimit)
                     }
                     return true
