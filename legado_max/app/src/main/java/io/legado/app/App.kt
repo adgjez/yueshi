@@ -16,6 +16,7 @@ import com.script.rhino.ReadOnlyJavaObject
 import com.script.rhino.RhinoScriptEngine
 import com.script.rhino.RhinoWrapFactory
 import io.legado.app.base.AppContextWrapper
+import io.legado.app.constant.AppConst.channelIdAiTask
 import io.legado.app.constant.AppConst.channelIdDownload
 import io.legado.app.constant.AppConst.channelIdReadAloud
 import io.legado.app.constant.AppConst.channelIdWeb
@@ -215,12 +216,25 @@ class App : Application() {
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
 
+        val aiTaskChannel = NotificationChannel(
+            channelIdAiTask,
+            getString(R.string.ai_task_channel_name),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            enableLights(false)
+            enableVibration(false)
+            setSound(null, null)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            setShowBadge(false)
+        }
+
         //向notification manager 提交channel
         notificationManager.createNotificationChannels(
             listOf(
                 downloadChannel,
                 readAloudChannel,
-                webChannel
+                webChannel,
+                aiTaskChannel
             )
         )
     }

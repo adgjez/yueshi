@@ -102,7 +102,7 @@ class ReadSelectionImageDialog() : BaseDialogFragment(R.layout.dialog_read_selec
         generateJob?.cancel()
         currentImage = null
         setLoading(true)
-        generateJob = lifecycleScope.launch {
+        generateJob = viewLifecycleOwner.lifecycleScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
                     AiImageService.generateAndStore(
@@ -131,7 +131,7 @@ class ReadSelectionImageDialog() : BaseDialogFragment(R.layout.dialog_read_selec
             return
         }
         binding.btnOptimizePrompt.isEnabled = false
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
                     AiImagePromptRewriter.rewrite(content, paragraphText)
@@ -149,7 +149,7 @@ class ReadSelectionImageDialog() : BaseDialogFragment(R.layout.dialog_read_selec
     private fun insertCurrentImage() {
         val image = currentImage ?: return
         binding.btnInsert.isEnabled = false
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
                     insertImageToCurrentChapter(image)
@@ -166,7 +166,9 @@ class ReadSelectionImageDialog() : BaseDialogFragment(R.layout.dialog_read_selec
             }.onFailure { error ->
                 showError(error.localizedMessage ?: getString(R.string.ai_image_insert_failed))
             }
-            binding.btnInsert.isEnabled = currentImage != null
+            if (view != null) {
+                binding.btnInsert.isEnabled = currentImage != null
+            }
         }
     }
 
