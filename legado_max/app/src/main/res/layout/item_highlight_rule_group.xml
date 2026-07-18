@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="6dp"
+    android:background="@drawable/shape_highlight_rule_group_row"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:minHeight="58dp"
+    android:paddingStart="12dp"
+    android:paddingTop="9dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="9dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_edit"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/shape_highlight_rule_group_action"
+        android:gravity="center"
+        android:minWidth="56dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:text="重命名"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/tv_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/shape_highlight_rule_group_action"
+        android:gravity="center"
+        android:minWidth="44dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:text="更多"
+        android:textSize="12sp" />
+
+</LinearLayout>
