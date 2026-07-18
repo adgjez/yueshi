@@ -100,6 +100,7 @@
     <string name="retry">Retry</string>
     <string name="web_service">Web service</string>
     <string name="web_service_desc">Web edit source and read book</string>
+    <string name="ai_task_channel_name">AI Task</string>
     <string name="web_service_auth_title">Web Service Auth</string>
     <string name="web_service_auth_summary">Require token for API access. Recommended to enable on public networks</string>
     <string name="web_service_token_title">Web Service Token</string>
