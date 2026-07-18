@@ -79,7 +79,7 @@ jobs:
           JAVA_TOOL_OPTIONS: "-Xmx512m"
         run: |
           VERSION_CODE=$(($(date -u +%s) / 60))
-          ./gradlew :app:assembleAppDebug \
+          ./gradlew :app:assembleAppMaxDebug \
             -Pabi=arm64-v8a \
             -PVERSION_CODE="$VERSION_CODE" \
             --no-daemon \
