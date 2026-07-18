@@ -1842,8 +1842,8 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val DEFAULT_AI_READ_ALOUD_PREPROCESS_RULES = """
         {
           "quotePairs": [
-            {"open": """, "close": ""},
-            {"open": "'", "close": "'"},
+            {"open": "“", "close": "”"},
+            {"open": "‘", "close": "’"},
             {"open": "\"", "close": "\""},
             {"open": "'", "close": "'"},
             {"open": "「", "close": "」"},
