@@ -21,7 +21,7 @@ object DatabaseMigrations {
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
             migration_95_96, migration_96_97, migration_97_98, migration_98_99,
-            migration_99_100, migration_100_101, migration_101_102
+            migration_99_100, migration_100_101, migration_101_102, migration_102_103
         )
     }
 
@@ -1117,6 +1117,24 @@ object DatabaseMigrations {
             db.execSQL("ALTER TABLE httpTTS ADD COLUMN synthesisThreadCount INTEGER NOT NULL DEFAULT 1")
             db.execSQL("ALTER TABLE httpTTS ADD COLUMN speakersJson TEXT NOT NULL DEFAULT ''")
             db.execSQL("ALTER TABLE httpTTS ADD COLUMN emotionsJson TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
+    // =======================================================================
+    // 102 → 103：创建 readRecordDaily 表（每日阅读时长统计，主键 date）
+    // =======================================================================
+    private val migration_102_103 = object : Migration(102, 103) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `readRecordDaily` (
+                    `date` TEXT NOT NULL,
+                    `readTime` INTEGER NOT NULL DEFAULT 0,
+                    `updatedAt` INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY(`date`)
+                )
+                """.trimIndent()
+            )
         }
     }
 

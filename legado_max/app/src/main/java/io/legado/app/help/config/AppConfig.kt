@@ -69,6 +69,11 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     const val MIN_FAST_SCROLLER_TOUCH_TARGET_DP = 32
     const val MAX_FAST_SCROLLER_TOUCH_TARGET_DP = 60
 
+    // Discovery page mode constants (stub: discovery feature not migrated, but AiSettingsTool references them)
+    const val DISCOVERY_PAGE_MODE_LEGACY = "legacy"
+    const val DISCOVERY_PAGE_MODE_MODERN = "modern"
+    const val DISCOVERY_PAGE_MODE_SUITE = "suite"
+
     val isCronet = appCtx.getPrefBoolean(PreferKey.cronet)
     var useAntiAlias = appCtx.getPrefBoolean(PreferKey.antiAlias)
     var userAgent: String = getPrefUserAgent()
@@ -425,6 +430,42 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val showDiscovery: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.showDiscovery, true)
+
+    // Stub: discovery feature itself is NOT migrated, but AiSettingsTool reads/writes these symbols.
+    // modernDiscoveryPage mirrors source semantics: true unless mode == LEGACY.
+    val modernDiscoveryPage: Boolean
+        get() = discoveryPageMode != DISCOVERY_PAGE_MODE_LEGACY
+
+    var discoveryPageMode: String
+        get() {
+            val stored = appCtx.getPrefString(PreferKey.discoveryPageMode)
+            return when (stored) {
+                DISCOVERY_PAGE_MODE_LEGACY,
+                DISCOVERY_PAGE_MODE_MODERN,
+                DISCOVERY_PAGE_MODE_SUITE -> stored
+                else -> if (appCtx.getPrefBoolean(PreferKey.modernDiscoveryPage, true)) {
+                    DISCOVERY_PAGE_MODE_MODERN
+                } else {
+                    DISCOVERY_PAGE_MODE_LEGACY
+                }
+            }
+        }
+        set(value) {
+            val normalized = when (value) {
+                DISCOVERY_PAGE_MODE_LEGACY,
+                DISCOVERY_PAGE_MODE_MODERN,
+                DISCOVERY_PAGE_MODE_SUITE -> value
+                else -> DISCOVERY_PAGE_MODE_MODERN
+            }
+            appCtx.putPrefString(PreferKey.discoveryPageMode, normalized)
+            appCtx.putPrefBoolean(
+                PreferKey.modernDiscoveryPage,
+                normalized != DISCOVERY_PAGE_MODE_LEGACY
+            )
+        }
+
+    val modernRssPage: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.modernRssPage, true)
 
     val showRSS: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.showRss, true)

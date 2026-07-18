@@ -202,6 +202,24 @@ object Debug {
     }
 
     /**
+     * 在指定书源 URL / 回调上下文中执行 [block]，结束后恢复原值。
+     * 用于 AI 书源调试工具在调试单次书源时复用 Debug 的日志输出链路。
+     */
+    suspend fun <T> withDebugSource(sourceUrl: String?, callback: Callback?, block: suspend () -> T): T {
+        val oldSource = debugSource
+        val oldCallback = this.callback
+        debugSource = sourceUrl
+        this.callback = callback
+        startTime = System.currentTimeMillis()
+        return try {
+            block()
+        } finally {
+            debugSource = oldSource
+            this.callback = oldCallback
+        }
+    }
+
+    /**
      * 开始校验
      * @param source 书源
      */

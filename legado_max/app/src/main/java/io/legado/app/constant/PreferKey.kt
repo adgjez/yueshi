@@ -45,6 +45,9 @@ object PreferKey {
     const val prevKeys = "prevKeyCodes"
     const val nextKeys = "nextKeyCodes"
     const val showDiscovery = "showDiscovery"
+    const val modernDiscoveryPage = "modernDiscoveryPage"
+    const val discoveryPageMode = "discoveryPageMode"
+    const val modernRssPage = "modernRssPage"
     const val enableReview = "enableReview"
     const val showRss = "showRss"
     const val debugMode = "debugMode" // 调试模式开关，控制"我的"页面调试工具入口显示

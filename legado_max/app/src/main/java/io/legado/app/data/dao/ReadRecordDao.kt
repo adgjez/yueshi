@@ -1,6 +1,7 @@
 package io.legado.app.data.dao
 
 import androidx.room.*
+import io.legado.app.data.entities.ReadRecordShow
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
@@ -71,6 +72,12 @@ interface ReadRecordDao {
 
     @get:Query("SELECT * FROM readRecord")
     val all: List<ReadRecord>
+
+    @get:Query("""select bookName, sum(readTime) as readTime, max(lastRead) as lastRead from readRecord group by bookName order by bookName collate localized""")
+    val allShow: List<ReadRecordShow>
+
+    @get:Query("select sum(readTime) from readRecord")
+    val allTime: Long
 
     @get:Query("SELECT COUNT(*) FROM readRecord")
     val count: Int
