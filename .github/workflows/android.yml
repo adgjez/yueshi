@@ -53,12 +53,12 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('legado_max/**/*.gradle*', 'legado_max/gradle/libs.versions.toml', 'legado_max/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Compile Kotlin (compileDebugKotlin)
+      - name: Compile Kotlin (compileAppMaxDebugKotlin)
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs=-XX:+UseParallelGC -Xmx4g -Xms256m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
             -Dorg.gradle.workers.max=2
-        run: ./gradlew :app:compileDebugKotlin --no-daemon --max-workers=2 --stacktrace
+        run: ./gradlew :app:compileAppMaxDebugKotlin --no-daemon --max-workers=2 --stacktrace
 
       - name: Assemble Debug APK
         env:
