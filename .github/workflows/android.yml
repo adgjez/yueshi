@@ -44,6 +44,18 @@ jobs:
           sed -i 's|https\\://mirrors.cloud.tencent.com/gradle/|https\\://services.gradle.org/distributions/|' gradle/wrapper/gradle-wrapper.properties
           cat gradle/wrapper/gradle-wrapper.properties | grep distributionUrl
 
+      - name: Configure Kotlin daemon memory (avoid OOM)
+        run: |
+          # Kotlin compiler runs in its own daemon; give it dedicated heap.
+          # Also force in-process strategy fallback if daemon cannot start.
+          {
+            echo "kotlin.daemon.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+            echo "kotlin.daemon.useFallbackStrategy=true"
+            echo "org.gradle.jvmargs=-XX:+UseParallelGC -Xmx4g -Xms512m -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+          } >> gradle.properties
+          echo "---- gradle.properties (tail) ----"
+          tail -n 8 gradle.properties
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -56,15 +68,15 @@ jobs:
       - name: Compile Kotlin (compileAppMaxDebugKotlin)
         env:
           GRADLE_OPTS: >-
-            -Dorg.gradle.jvmargs=-XX:+UseParallelGC -Xmx4g -Xms256m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
             -Dorg.gradle.workers.max=2
+          JAVA_TOOL_OPTIONS: "-Xmx512m"
         run: ./gradlew :app:compileAppMaxDebugKotlin --no-daemon --max-workers=2 --stacktrace
 
       - name: Assemble Debug APK
         env:
           GRADLE_OPTS: >-
-            -Dorg.gradle.jvmargs=-XX:+UseParallelGC -Xmx4g -Xms256m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
             -Dorg.gradle.workers.max=2
+          JAVA_TOOL_OPTIONS: "-Xmx512m"
         run: |
           VERSION_CODE=$(($(date -u +%s) / 60))
           ./gradlew :app:assembleAppDebug \
