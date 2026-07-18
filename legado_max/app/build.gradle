@@ -84,7 +84,7 @@ android {
         def abi = project.findProperty("abi")
         if (abi != null) {
             ndk {
-                abiFilters abi.toString().split(',').collect { it.trim() }
+                abi.toString().split(',').collect { it.trim() }.each { abiFilters it }
             }
         }
 
