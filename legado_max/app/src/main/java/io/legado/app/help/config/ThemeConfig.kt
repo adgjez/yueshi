@@ -47,6 +47,8 @@ import java.io.FileOutputStream
 @Keep
 object ThemeConfig {
     const val configFileName = "themeConfig.json"
+    const val PANEL_BG_CROP = "crop"
+    const val PANEL_BG_FIT = "fit"
     val configFilePath = FileUtils.getPath(appCtx.filesDir, configFileName)
 
     val configList: ArrayList<Config> by lazy {

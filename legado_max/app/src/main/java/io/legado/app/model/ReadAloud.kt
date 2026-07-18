@@ -9,6 +9,8 @@ import io.legado.app.constant.IntentAction
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.readaloud.speech.SpeechRoute
+import io.legado.app.help.readaloud.speech.SpeechRouteSanitizer
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.service.HttpReadAloudService
 import io.legado.app.service.TTSReadAloudService
@@ -22,6 +24,7 @@ import splitties.init.appCtx
 object ReadAloud {
     private var aloudClass: Class<*> = getReadAloudClass()
     val ttsEngine get() = ReadBook.book?.getTtsEngine() ?: AppConfig.ttsEngine
+    val speechRoute get() = SpeechRouteSanitizer.validOrDefault(SpeechRoute.fromTtsEngineValue(ttsEngine))
     var httpTTS: HttpTTS? = null
 
     /**
@@ -30,16 +33,41 @@ object ReadAloud {
      */
     private fun getReadAloudClass(): Class<*> {
         val ttsEngine = ttsEngine
-        if (ttsEngine.isNullOrBlank()) {
+        val route = SpeechRoute.fromTtsEngineValue(ttsEngine)
+        if (AppConfig.aiReadAloudRoleEnabled) {
+            httpTTS = route
+                .takeIf { it.engineType == SpeechRoute.ENGINE_HTTP }
+                ?.engineValue
+                ?.toLongOrNull()
+                ?.let { appDb.httpTTSDao.get(it) }
+                ?: appDb.httpTTSDao.all.firstOrNull()
+            return HttpReadAloudService::class.java
+        }
+        if (ttsEngine.isNullOrBlank() || route.engineType == SpeechRoute.ENGINE_SYSTEM) {
             return TTSReadAloudService::class.java
         }
-        if (StringUtils.isNumeric(ttsEngine)) {
-            httpTTS = appDb.httpTTSDao.get(ttsEngine.toLong())
+        if (route.engineType == SpeechRoute.ENGINE_HTTP) {
+            httpTTS = route.engineValue.toLongOrNull()?.let { appDb.httpTTSDao.get(it) }
             if (httpTTS != null) {
                 return HttpReadAloudService::class.java
             }
         }
         return TTSReadAloudService::class.java
+    }
+
+    /**
+     * 解析当前应使用的朗读服务类（不修改缓存）
+     */
+    fun resolveReadAloudClass(): Class<*> {
+        return getReadAloudClass()
+    }
+
+    /**
+     * 重新解析并刷新缓存的朗读服务类
+     */
+    fun refreshReadAloudClass(): Class<*> {
+        aloudClass = getReadAloudClass()
+        return aloudClass
     }
 
     /**
@@ -131,6 +159,36 @@ object ReadAloud {
             intent.action = IntentAction.stop
             context.startForegroundServiceCompat(intent)
         }
+    }
+
+    /**
+     * 因书籍切换而停止朗读（携带 stopReason，避免触发进度上传等副作用）
+     */
+    fun stopForBookSwitch(context: Context) {
+        if (BaseReadAloudService.isRun) {
+            val intent = Intent(context, aloudClass)
+            intent.action = IntentAction.stop
+            intent.putExtra(IntentAction.stopReason, IntentAction.stopReasonBookSwitch)
+            context.startForegroundServiceCompat(intent)
+        }
+    }
+
+    /**
+     * 跳转到指定 cue（多角色朗读定位）
+     */
+    fun moveToCue(
+        context: Context,
+        cueIndex: Int,
+        chapterPosition: Int,
+        play: Boolean = BaseReadAloudService.isPlay()
+    ) {
+        if (!BaseReadAloudService.isRun) return
+        val intent = Intent(context, aloudClass)
+        intent.action = IntentAction.moveTo
+        intent.putExtra("cueIndex", cueIndex)
+        intent.putExtra("chapterPosition", chapterPosition)
+        intent.putExtra("play", play)
+        context.startForegroundServiceCompat(intent)
     }
 
     /**

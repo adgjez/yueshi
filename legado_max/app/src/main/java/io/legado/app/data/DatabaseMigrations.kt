@@ -21,7 +21,7 @@ object DatabaseMigrations {
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
             migration_95_96, migration_96_97, migration_97_98, migration_98_99,
-            migration_99_100, migration_100_101
+            migration_99_100, migration_100_101, migration_101_102
         )
     }
 
@@ -1102,6 +1102,21 @@ object DatabaseMigrations {
                 USING FTS4(`fragmentId` TEXT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `chapterTitle` TEXT NOT NULL)
                 """.trimIndent()
             )
+        }
+    }
+
+    // =======================================================================
+    // 101 → 102：httpTTS 表新增 synthesisThreadCount / speakersJson / emotionsJson 列
+    // 对齐源仓库 HttpTTS 实体新增字段：
+    //   synthesisThreadCount: 并发合成线程数，默认 1
+    //   speakersJson: 发言人分组 JSON，默认空字符串
+    //   emotionsJson: 情感分组 JSON，默认空字符串
+    // =======================================================================
+    private val migration_101_102 = object : Migration(101, 102) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE httpTTS ADD COLUMN synthesisThreadCount INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("ALTER TABLE httpTTS ADD COLUMN speakersJson TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE httpTTS ADD COLUMN emotionsJson TEXT NOT NULL DEFAULT ''")
         }
     }
 

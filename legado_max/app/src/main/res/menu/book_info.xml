@@ -21,6 +21,12 @@
         app:showAsAction="ifRoom" />
 
     <item
+        android:id="@+id/menu_ai_image_gallery"
+        android:icon="@drawable/ic_image"
+        android:title="@string/ai_image_gallery"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/menu_upload"
         android:title="@string/upload_to_remote"
         app:showAsAction="never" />

@@ -64,6 +64,11 @@ import java.net.URI
  */
 @Suppress("MemberVisibilityCanBePrivate", "ConstPropertyName")
 object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
+
+    const val DEFAULT_FAST_SCROLLER_TOUCH_TARGET_DP = 44
+    const val MIN_FAST_SCROLLER_TOUCH_TARGET_DP = 32
+    const val MAX_FAST_SCROLLER_TOUCH_TARGET_DP = 60
+
     val isCronet = appCtx.getPrefBoolean(PreferKey.cronet)
     var useAntiAlias = appCtx.getPrefBoolean(PreferKey.antiAlias)
     var userAgent: String = getPrefUserAgent()
@@ -542,6 +547,81 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefInt(PreferKey.systemTypefaces)
         set(value) {
             appCtx.putPrefInt(PreferKey.systemTypefaces, value)
+        }
+
+    var uiFontPath: String
+        get() = appCtx.getPrefString(PreferKey.uiFontPath).orEmpty()
+        set(value) {
+            appCtx.putPrefString(PreferKey.uiFontPath, value)
+        }
+
+    var titleFontPath: String
+        get() = appCtx.getPrefString(PreferKey.titleFontPath).orEmpty()
+        set(value) {
+            appCtx.putPrefString(PreferKey.titleFontPath, value)
+        }
+
+    var bookCoverShadow: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.bookCoverShadow, true)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.bookCoverShadow, value)
+        }
+
+    var uiCornerScale: Float
+        get() = appCtx.getPrefString(PreferKey.uiCornerScale, "1")
+            ?.toFloatOrNull()
+            ?.coerceIn(0f, 3f)
+            ?: 1f
+        set(value) {
+            appCtx.putPrefString(PreferKey.uiCornerScale, value.coerceIn(0f, 3f).toString())
+        }
+
+    var uiLayoutAlpha: Int
+        get() = appCtx.getPrefInt(PreferKey.uiLayoutAlpha, 100).coerceIn(0, 100)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.uiLayoutAlpha, value.coerceIn(0, 100))
+        }
+
+    var dialogAlpha: Int
+        get() = appCtx.getPrefInt(PreferKey.dialogAlpha, 100).coerceIn(0, 100)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.dialogAlpha, value.coerceIn(0, 100))
+        }
+
+    val uiCornerSearchFollow: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.uiCornerSearchFollow, false)
+
+    val uiCornerReplyFollow: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.uiCornerReplyFollow, false)
+
+    var uiFontColor: String
+        get() = appCtx.getPrefString(PreferKey.uiFontColor).orEmpty()
+        set(value) {
+            appCtx.putPrefString(PreferKey.uiFontColor, value)
+        }
+
+    var titleFontColor: String
+        get() = appCtx.getPrefString(PreferKey.titleFontColor).orEmpty()
+        set(value) {
+            appCtx.putPrefString(PreferKey.titleFontColor, value)
+        }
+
+    var loadCoverHighQuality: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.loadCoverHighQuality, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.loadCoverHighQuality, value)
+        }
+
+    var fastScrollerTouchTargetDp: Int
+        get() = appCtx.getPrefInt(
+            PreferKey.fastScrollerTouchTargetDp,
+            DEFAULT_FAST_SCROLLER_TOUCH_TARGET_DP
+        ).coerceIn(MIN_FAST_SCROLLER_TOUCH_TARGET_DP, MAX_FAST_SCROLLER_TOUCH_TARGET_DP)
+        set(value) {
+            appCtx.putPrefInt(
+                PreferKey.fastScrollerTouchTargetDp,
+                value.coerceIn(MIN_FAST_SCROLLER_TOUCH_TARGET_DP, MAX_FAST_SCROLLER_TOUCH_TARGET_DP)
+            )
         }
 
     var elevation: Int

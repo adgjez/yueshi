@@ -40,8 +40,15 @@ object EventBus {
     // ── 朗读 / TTS ──
     const val ALOUD_STATE = "aloud_state"                   // 朗读状态变�?
     const val TTS_PROGRESS = "ttsStart"                     // TTS 朗读进度
+    const val READ_ALOUD_PROGRESS = "readAloudProgress"     // 朗读进度状态（含 cue/session 信息）
     const val READ_ALOUD_DS = "readAloudDs"                 // 朗读数据源变�?
     const val READ_ALOUD_PLAY = "readAloudPlay"             // 朗读播放控制指令
+    const val READ_ALOUD_PLAYBACK_STATE = "readAloudPlaybackState"  // 朗读播放阶段状态
+    const val READ_ALOUD_CONFIG_CHANGED = "readAloudConfigChanged"  // 朗读配置变更
+    const val READ_ALOUD_CONFIG_SCOPE = "scope"             // 配置变更作用域 key
+    const val READ_ALOUD_CONFIG_SCOPE_AUDIO = "audio"       // 音频配置变更
+    const val READ_ALOUD_CONFIG_SCOPE_SPEECH = "speech"     // 语音角色配置变更
+    const val READ_ALOUD_CONFIG_SCOPE_ENGINE = "engine"     // 朗读引擎变更
     const val SHOW_READ_MENU = "showReadMenu"               // ��ʾ���Ĳ˵�
 
     // ── 音频播放 ──

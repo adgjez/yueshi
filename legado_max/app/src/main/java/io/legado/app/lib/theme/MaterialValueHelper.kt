@@ -4,9 +4,11 @@ package io.legado.app.lib.theme
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
@@ -74,6 +76,9 @@ val Context.bottomBackground: Int
     get() = ThemeStore.bottomBackground(this)
 
 val Context.primaryTextColor: Int
+    get() = getPrimaryTextColor(isDarkTheme)
+
+val Context.titleTextColor: Int
     get() = getPrimaryTextColor(isDarkTheme)
 
 val Context.transparentNavBar: Boolean
@@ -149,3 +154,26 @@ val Context.filletBackground: GradientDrawable
         background.setColor(backgroundColor)
         return background
     }
+
+@ColorInt
+fun String?.toThemeTextColorOrNull(): Int? {
+    val raw = this?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val withoutPrefix = raw
+        .removePrefix("#")
+        .removePrefix("0x")
+        .removePrefix("0X")
+    val candidate = if (
+        withoutPrefix.length in setOf(6, 8) &&
+        withoutPrefix.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+    ) {
+        "#$withoutPrefix"
+    } else {
+        raw
+    }
+    return kotlin.runCatching { candidate.toColorInt() }.getOrNull()
+}
+
+@ColorInt
+fun defaultThemeTextColor(isNightTheme: Boolean): Int {
+    return if (isNightTheme) Color.WHITE else Color.BLACK
+}

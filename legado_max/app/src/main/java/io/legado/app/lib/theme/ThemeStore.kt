@@ -193,6 +193,11 @@ private constructor(private val mContext: Context) : ThemeStoreInterface {
         }
 
         @CheckResult
+        fun valuesChanged(context: Context = appCtx): Long {
+            return prefs(context).getLong(ThemeStorePrefKeys.VALUES_CHANGED, 0L)
+        }
+
+        @CheckResult
         @ColorInt
         fun primaryColor(context: Context = appCtx): Int {
             return prefs(context).getInt(

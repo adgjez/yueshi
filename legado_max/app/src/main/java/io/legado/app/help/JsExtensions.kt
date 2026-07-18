@@ -96,6 +96,7 @@ interface JsExtensions : JsEncodeUtils {
 
     fun getSource(): BaseSource?
     fun getTag(): String?
+    fun isWebSocketAllowed(): Boolean = false
 
     private val context: CoroutineContext
         get() = rhinoContextOrNull?.coroutineContext ?: EmptyCoroutineContext

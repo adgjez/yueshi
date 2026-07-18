@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
+import io.legado.app.help.ai.AiImageGalleryManager
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.isDataUrl
@@ -25,6 +26,9 @@ object ImageLoader {
      * 自动判断path类型
      */
     fun load(context: Context, path: String?): RequestBuilder<Drawable> {
+        AiImageGalleryManager.resolveImageFile(path)?.let {
+            return Glide.with(context).load(it)
+        }
         return when {
             path.isNullOrEmpty() -> Glide.with(context).load(path)
             path.isDataUrl() -> Glide.with(context).load(path)
@@ -40,6 +44,9 @@ object ImageLoader {
 
     fun load(fragment: Fragment, lifecycle: Lifecycle, path: String?): RequestBuilder<Drawable> {
         val requestManager = Glide.with(fragment).lifecycle(lifecycle)
+        AiImageGalleryManager.resolveImageFile(path)?.let {
+            return requestManager.load(it)
+        }
         return when {
             path.isNullOrEmpty() -> requestManager.load(path)
             path.isDataUrl() -> requestManager.load(path)
@@ -56,6 +63,9 @@ object ImageLoader {
 
     fun loadBitmap(context: Context, path: String?): RequestBuilder<Bitmap> {
         val requestManager = Glide.with(context).`as`(Bitmap::class.java)
+        AiImageGalleryManager.resolveImageFile(path)?.let {
+            return requestManager.load(it)
+        }
         return when {
             path.isNullOrEmpty() -> requestManager.load(path)
             path.isDataUrl() -> requestManager.load(path)
@@ -70,6 +80,9 @@ object ImageLoader {
     }
 
     fun loadFile(context: Context, path: String?): RequestBuilder<File> {
+        AiImageGalleryManager.resolveImageFile(path)?.let {
+            return Glide.with(context).asFile().load(it)
+        }
         return when {
             path.isNullOrEmpty() -> Glide.with(context).asFile().load(path)
             path.isAbsUrl() -> Glide.with(context).asFile().load(path)

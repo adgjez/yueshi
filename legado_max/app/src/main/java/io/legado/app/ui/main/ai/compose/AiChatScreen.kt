@@ -96,7 +96,7 @@ import androidx.lifecycle.Observer
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.ui.about.ReadRecordWidgetStore
+import io.legado.app.ui.about.ReadRecordGoalConfigStore
 import io.legado.app.ui.main.ai.AiAgentMode
 import io.legado.app.ui.main.ai.AiChatMessage
 import io.legado.app.ui.main.ai.AiChatCompanionConfig
@@ -257,7 +257,7 @@ fun AiChatRoute(
         { companionId -> viewModel.historySessions(companionId) }
     }
     val userAvatar = remember(refreshToken) {
-        ReadRecordWidgetStore.loadGoalConfig().avatar
+        ReadRecordGoalConfigStore.load().avatar
     }
     val autoSpeakEnabled = remember(refreshToken) { AppConfig.aiChatAutoSpeakEnabled }
     val thinkingToolbarEnabled = remember(refreshToken) { AppConfig.aiThinkingToolbarEnabled }

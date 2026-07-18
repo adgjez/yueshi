@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.get
+import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.lifecycle.lifecycleScope
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
@@ -37,6 +38,7 @@ import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.IntentData
 import io.legado.app.help.TTS
+import io.legado.app.help.ai.AiReadAloudRoleState
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.book.isAudio
@@ -272,6 +274,12 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var syncDialog: AlertDialog? = null
     private var needSyncReadAloudOnResume: Boolean = false
     private var readAloudBackPressedOnce: Boolean = false // 朗读返回键计数
+    private var lastTextMenuAnchor: ReadAiFloatingPanel.Anchor? = null
+
+    private data class SelectedParagraphForImage(
+        val contentIndex: Int,
+        val text: String
+    )
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -280,10 +288,18 @@ class ReadBookActivity : BaseReadBookActivity(),
         binding.cursorRight.setColorFilter(accentColor)
         binding.cursorLeft.setOnTouchListener(this)
         binding.cursorRight.setOnTouchListener(this)
+        binding.readAiPanel.attach(this)
+        binding.readAiSummaryPanel.attach(this)
         window.setBackgroundDrawable(null)
         upScreenTimeOut()
         ReadBook.register(this)
         onBackPressedDispatcher.addCallback(this) {
+            if (binding.readAiPanel.isVisible) {
+                if (!binding.readAiPanel.exitFullscreenIfNeeded()) {
+                    binding.readAiPanel.close()
+                }
+                return@addCallback
+            }
             if (binding.webSearchPanel.isShown) {
                 if (binding.webSearchPanel.canGoBack()) {
                     binding.webSearchPanel.goBack()
@@ -912,6 +928,14 @@ class ReadBookActivity : BaseReadBookActivity(),
         val navigationBarHeight =
             if (!ReadBookConfig.hideNavigationBar && navigationBarGravity == Gravity.BOTTOM)
                 binding.navigationBar.height else 0
+        lastTextMenuAnchor = ReadAiFloatingPanel.Anchor(
+            centerX = ((binding.textMenuPosition.x + binding.cursorRight.x) / 2f).toInt(),
+            topY = binding.textMenuPosition.y.toInt(),
+            bottomY = maxOf(
+                binding.cursorLeft.y.toInt(),
+                binding.cursorRight.y.toInt() + binding.cursorRight.height
+            )
+        )
         textActionMenu.show(
             binding.textMenuPosition,
             binding.root.height + navigationBarHeight,
@@ -995,6 +1019,14 @@ class ReadBookActivity : BaseReadBookActivity(),
                 showDialogFragment(DictDialog(selectedText))
                 return true
             }
+            R.id.menu_ask_ai -> {
+                askAiBySelection()
+                return true
+            }
+            R.id.menu_generate_image -> {
+                generateImageBySelection()
+                return true
+            }
         }
         return false
     }
@@ -1005,6 +1037,123 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun onMenuActionFinally() = binding.run {
         textActionMenu.dismiss()
         readView.cancelSelect()
+    }
+
+    private fun askAiBySelection() {
+        val prompt = selectedText.trim()
+        if (prompt.isEmpty()) return
+        openReadAiPanel(prompt)
+    }
+
+    private fun generateImageBySelection() {
+        if (AppConfig.aiCurrentImageProvider == null) {
+            toastOnUi(R.string.ai_missing_config)
+            return
+        }
+        val paragraph = currentSelectedParagraphForImage()
+        if (paragraph == null) {
+            toastOnUi(R.string.ai_image_no_selection)
+            return
+        }
+        val prompt = selectedText.trim().ifBlank { paragraph.text.trim() }
+        if (prompt.isBlank()) {
+            toastOnUi(R.string.ai_image_no_selection)
+            return
+        }
+        showDialogFragment(
+            ReadSelectionImageDialog(
+                prompt = prompt,
+                paragraphIndex = paragraph.contentIndex,
+                paragraphText = paragraph.text
+            )
+        )
+    }
+
+    private fun currentSelectedParagraphForImage(): SelectedParagraphForImage? {
+        val textChapter = ReadBook.curTextChapter ?: return null
+        val selectStartPos = binding.readView.curPage.selectStartPos
+        if (!selectStartPos.isSelected()) return null
+        val page = binding.readView.curPage.relativePage(selectStartPos.relativePagePos)
+        val line = page.getLine(selectStartPos.lineIndex)
+        if (line.paragraphNum <= 0 || line.isTitle) return null
+        val paragraphs = textChapter.getParagraphs(pageSplit = false)
+        val paragraph = paragraphs.firstOrNull { it.realNum == line.paragraphNum }
+            ?: return null
+        if (paragraph.firstLine.isTitle) return null
+        val contentIndex = paragraph.num.takeIf { it >= 0 } ?: return null
+        return SelectedParagraphForImage(
+            contentIndex = contentIndex,
+            text = paragraph.text
+        )
+    }
+
+    override fun openReadAssistant() {
+        openReadAiPanel("")
+    }
+
+    override fun openReadAiSummary() {
+        val modelConfig = AppConfig.aiSummaryModelConfig
+        if (AppConfig.aiProviderForModel(modelConfig)?.baseUrl.isNullOrBlank()) {
+            toastOnUi(R.string.ai_missing_config)
+            return
+        }
+        if (!AppConfig.aiAssistantEnabled) {
+            toastOnUi(R.string.ai_not_enabled)
+            return
+        }
+        val book = ReadBook.book ?: run {
+            toastOnUi(R.string.book_name)
+            return
+        }
+        val textChapter = ReadBook.curTextChapter ?: run {
+            toastOnUi(R.string.chapter_list)
+            return
+        }
+        val chapter = textChapter.chapter
+        val content = textChapter.getContent().trim()
+        if (content.isBlank()) {
+            toastOnUi(R.string.content_empty)
+            return
+        }
+        val anchor = lastTextMenuAnchor
+            ?: ReadAiFloatingPanel.Anchor(
+                centerX = binding.root.width / 2,
+                topY = binding.root.height / 4,
+                bottomY = binding.root.height / 3
+            )
+        binding.readAiSummaryPanel.open(book, chapter, content, anchor)
+    }
+
+    private fun openReadAiPanel(prompt: String) {
+        val modelConfig = AppConfig.aiAskModelConfig
+        if (AppConfig.aiProviderForModel(modelConfig)?.baseUrl.isNullOrBlank()) {
+            toastOnUi(R.string.ai_missing_config)
+            return
+        }
+        if (!AppConfig.aiAssistantEnabled) {
+            toastOnUi(R.string.ai_not_enabled)
+            return
+        }
+        val book = ReadBook.book
+        val chapter = ReadBook.curTextChapter?.chapter
+        val anchor = lastTextMenuAnchor
+            ?: ReadAiFloatingPanel.Anchor(
+                centerX = binding.root.width / 2,
+                topY = binding.root.height / 3,
+                bottomY = binding.root.height / 2
+            )
+        binding.readAiPanel.open(
+            ReadAiFloatingPanel.ReadContext(
+                bookUrl = book?.bookUrl.orEmpty().ifBlank { book?.name.orEmpty() },
+                bookName = book?.name.orEmpty(),
+                author = book?.author.orEmpty(),
+                sourceName = ReadBook.bookSource?.bookSourceName.orEmpty(),
+                chapterTitle = chapter?.title.orEmpty(),
+                chapterIndex = chapter?.index ?: ReadBook.durChapterIndex,
+                selectedText = prompt
+            ),
+            anchor = anchor
+        )
     }
 
     private fun speak(text: String) {
@@ -1939,6 +2088,9 @@ class ReadBookActivity : BaseReadBookActivity(),
                 }
             }
             refreshReadAloudMiniBar()
+        }
+        observeEvent<AiReadAloudRoleState>(EventBus.AI_READ_ALOUD_ROLE_STATE) {
+            AppLog.putDebug("AI read aloud role state: stage=${it.stage}, status=${it.status}, bookUrl=${it.bookUrl}, chapterIndex=${it.chapterIndex}")
         }
         observeEventSticky<Int>(EventBus.TTS_PROGRESS) {
             lifecycleScope.launch(IO) {

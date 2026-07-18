@@ -67,6 +67,20 @@ import kotlin.coroutines.resume
 import androidx.core.view.get
 import io.legado.app.help.update.AppUpdate
 import io.legado.app.ui.about.UpdateDialog
+import io.legado.app.ui.main.ai.AiChatActivity
+import io.legado.app.utils.dpToPx
+import io.legado.app.utils.getPrefInt
+import io.legado.app.utils.putPrefInt
+import android.graphics.drawable.GradientDrawable
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.widget.FrameLayout
+import android.widget.ImageView
+import androidx.core.content.ContextCompat
+import androidx.core.view.doOnLayout
+import androidx.core.view.isVisible
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.hours
 
 /**
@@ -101,6 +115,15 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         TabFragmentPageAdapter(supportFragmentManager)
     }
     private var onUpBooksBadgeView: BadgeView? = null
+    private var aiFloatingBall: FrameLayout? = null
+    private var aiFloatingBallDragged = false
+    private var bottomNavigationInset = 0
+    private val aiFloatingBallAttachRunnable = Runnable {
+        aiFloatingBall?.let { placeAiFloatingBall(it, animate = true, attached = true) }
+    }
+    private val sidebarTouchSlop by lazy {
+        ViewConfiguration.get(this).scaledTouchSlop
+    }
 
     private fun bookshelfPosition(): Int = realPositions.indexOf(idBookshelf)
 
@@ -230,9 +253,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
         bottomNavigationView.setOnApplyWindowInsetsListenerCompat { view, windowInsets ->
             val height = windowInsets.navigationBarHeight
+            bottomNavigationInset = height
             view.bottomPadding = height
             windowInsets.inset(0, 0, 0, height)
         }
+        updateAiFloatingBall()
     }
 
     /**
@@ -365,6 +390,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     override fun onDestroy() {
+        aiFloatingBall?.removeCallbacks(aiFloatingBallAttachRunnable)
         super.onDestroy()
         Coroutine.async {
             BookHelp.clearInvalidCache()
@@ -380,6 +406,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         // 或 recreate() 可能被 upSort() 异常阻断。
         // 在 onResume 中直接刷新背景图片，确保主题背景变更立即生效。
         upBackgroundImage()
+        updateAiFloatingBall()
     }
 
     /**
@@ -488,6 +515,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         menu.findItem(menuItemId)?.isChecked = true
 
         adapter.notifyDataSetChanged()
+        updateAiFloatingBall()
     }
 
     private fun upHomePage() {
@@ -512,6 +540,168 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             return if (AppConfig.bookGroupStyle == 1) idBookshelf2 else idBookshelf1
         }
         return id
+    }
+
+    private fun updateAiFloatingBall() {
+        if (!shouldShowAiFloatingBall()) {
+            aiFloatingBall?.removeCallbacks(aiFloatingBallAttachRunnable)
+            aiFloatingBall?.isVisible = false
+            return
+        }
+        val ball = aiFloatingBall ?: createAiFloatingBall().also {
+            aiFloatingBall = it
+            it.visibility = View.INVISIBLE
+            binding.root.addView(it)
+        }
+        syncAiFloatingBallIcon(ball)
+        showAiFloatingBallWhenReady(ball)
+    }
+
+    private fun shouldShowAiFloatingBall(): Boolean {
+        return AppConfig.aiAssistantEnabled
+    }
+
+    private fun createAiFloatingBall(): FrameLayout {
+        val size = resources.getDimensionPixelSize(R.dimen.main_ai_floating_ball_size)
+        val iconPadding = resources.getDimensionPixelSize(R.dimen.main_ai_floating_ball_icon_padding)
+        return FrameLayout(this).apply {
+            elevation = 6.dpToPx().toFloat()
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(primaryColor)
+            }
+            layoutParams = FrameLayout.LayoutParams(size, size)
+            addView(ImageView(this@MainActivity).apply {
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            })
+            syncAiFloatingBallIcon(this)
+            setOnClickListener {
+                if (!aiFloatingBallDragged) {
+                    startActivity<AiChatActivity>()
+                }
+            }
+            setOnTouchListener(AiFloatingBallTouchListener(this))
+        }
+    }
+
+    private fun scheduleAiFloatingBallAttach() {
+        aiFloatingBall?.removeCallbacks(aiFloatingBallAttachRunnable)
+        aiFloatingBall?.postDelayed(aiFloatingBallAttachRunnable, 3000L)
+    }
+
+    private fun showAiFloatingBallWhenReady(ball: View) {
+        ball.bringToFront()
+        if (placeAiFloatingBall(ball, animate = false, attached = true)) {
+            ball.isVisible = true
+            scheduleAiFloatingBallAttach()
+            return
+        }
+        ball.visibility = View.INVISIBLE
+        binding.root.doOnLayout {
+            ball.doOnLayout {
+                if (aiFloatingBall === ball && shouldShowAiFloatingBall()) {
+                    showAiFloatingBallWhenReady(ball)
+                }
+            }
+        }
+    }
+
+    private fun aiFloatingBallBottomBound(): Float {
+        val navTop = binding.bottomNavigationView.y
+        return if (navTop > 0) navTop
+        else (binding.root.height - bottomNavigationInset).toFloat()
+    }
+
+    private fun placeAiFloatingBall(ball: View, animate: Boolean, attached: Boolean): Boolean {
+        val parentWidth = binding.root.width
+        val parentHeight = binding.root.height
+        if (parentWidth <= 0 || parentHeight <= 0 || ball.width <= 0 || ball.height <= 0) return false
+        val side = getPrefInt(PreferKey.aiFloatingBallSide, 1).coerceIn(0, 1)
+        val yPercent = getPrefInt(PreferKey.aiFloatingBallYPercent, 50).coerceIn(8, 92)
+        val targetX = if (side == 0) 0f else (parentWidth - ball.width).toFloat()
+        val safeMargin = resources.getDimensionPixelSize(R.dimen.main_ai_floating_ball_safe_margin)
+        val bottomBound = aiFloatingBallBottomBound() - safeMargin
+        val topBound = safeMargin.toFloat()
+        val availableHeight = (bottomBound - topBound - ball.height).coerceAtLeast(1f)
+        val targetY = topBound + availableHeight * yPercent / 100f
+        if (animate) {
+            ball.animate()
+                .x(targetX)
+                .y(targetY)
+                .setDuration(180L)
+                .start()
+        } else {
+            ball.x = targetX
+            ball.y = targetY
+        }
+        return true
+    }
+
+    private fun syncAiFloatingBallIcon(ball: View) {
+        val imageView = (ball as? ViewGroup)?.getChildAt(0) as? ImageView ?: return
+        val drawable = ContextCompat.getDrawable(this, R.drawable.ic_bottom_ai_assistant)
+            ?: ContextCompat.getDrawable(this, R.drawable.ic_search)
+        imageView.setImageDrawable(drawable)
+        imageView.imageTintList = null
+    }
+
+    private inner class AiFloatingBallTouchListener(private val target: View) : View.OnTouchListener {
+        private var downRawX = 0f
+        private var downRawY = 0f
+        private var downX = 0f
+        private var downY = 0f
+
+        override fun onTouch(v: View, event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    target.removeCallbacks(aiFloatingBallAttachRunnable)
+                    downRawX = event.rawX
+                    downRawY = event.rawY
+                    downX = target.x
+                    downY = target.y
+                    aiFloatingBallDragged = false
+                    return true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - downRawX
+                    val dy = event.rawY - downRawY
+                    if (!aiFloatingBallDragged && (abs(dx) > sidebarTouchSlop || abs(dy) > sidebarTouchSlop)) {
+                        aiFloatingBallDragged = true
+                    }
+                    if (aiFloatingBallDragged) {
+                        val parent = binding.root
+                        target.x = (downX + dx).coerceIn(0f, (parent.width - target.width).toFloat())
+                        val topLimit = 12.dpToPx().toFloat()
+                        val bottomLimit = (aiFloatingBallBottomBound() - target.height - 12.dpToPx())
+                            .coerceAtLeast(12.dpToPx())
+                            .toFloat()
+                        target.y = (downY + dy).coerceIn(topLimit, bottomLimit)
+                    }
+                    return true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (aiFloatingBallDragged) {
+                        val side = if (target.x + target.width / 2f < binding.root.width / 2f) 0 else 1
+                        val availableHeight = (aiFloatingBallBottomBound() - target.height).coerceAtLeast(1f)
+                        val yPercent = ((target.y / availableHeight) * 100).toInt()
+                            .coerceIn(8, 92)
+                        putPrefInt(PreferKey.aiFloatingBallSide, side)
+                        putPrefInt(PreferKey.aiFloatingBallYPercent, yPercent)
+                        placeAiFloatingBall(target, animate = true, attached = false)
+                        scheduleAiFloatingBallAttach()
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP) {
+                        target.performClick()
+                    }
+                    return true
+                }
+            }
+            return false
+        }
     }
 
     private inner class PageChangeCallback : ViewPager.SimpleOnPageChangeListener() {

@@ -16,6 +16,7 @@ import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.HttpTTS
 import io.legado.app.help.CacheManager
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.help.ConcurrentRateLimiter
@@ -85,6 +86,11 @@ class AnalyzeUrl(
     private val page: Int? = null,
     private val speakText: String? = null,
     private val speakSpeed: Int? = null,
+    private val currentToneID: String? = null,
+    private val currentSpeakerName: String? = null,
+    private val currentEmotionName: String? = null,
+    private val currentEmotionTag: String? = null,
+    private val currentSpeechRouteJson: String? = null,
     private var baseUrl: String = "",
     private val source: BaseSource? = null,
     private val ruleData: RuleDataInterface? = null,
@@ -92,6 +98,7 @@ class AnalyzeUrl(
     private val readTimeout: Long? = null,
     private val callTimeout: Long? = null,
     private var coroutineContext: CoroutineContext = EmptyCoroutineContext,
+    private val allowWebSocket: Boolean = false,
     headerMapF: Map<String, String>? = null,
     hasLoginHeader: Boolean = true,
     private val infoMap: MutableMap<String, String>? = null
@@ -372,6 +379,11 @@ class AnalyzeUrl(
             bindings["key"] = key
             bindings["speakText"] = speakText
             bindings["speakSpeed"] = speakSpeed
+            bindings["currentToneID"] = currentToneID
+            bindings["currentSpeakerName"] = currentSpeakerName
+            bindings["currentEmotionName"] = currentEmotionName
+            bindings["currentEmotionTag"] = currentEmotionTag
+            bindings["currentSpeechRouteJson"] = currentSpeechRouteJson
             bindings["book"] = ruleData as? Book
             bindings["source"] = source
             bindings["result"] = result
@@ -798,6 +810,10 @@ class AnalyzeUrl(
 
     override fun getTag(): String? {
         return source?.getTag()
+    }
+
+    override fun isWebSocketAllowed(): Boolean {
+        return allowWebSocket && speakText != null && source is HttpTTS
     }
 
     companion object {

@@ -12,6 +12,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
+import io.legado.app.help.ai.AiImageGalleryManager
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.localBook.LocalBook
@@ -401,7 +402,7 @@ object BookHelp {
             val matcher = AppPattern.imgPattern.matcher(it)
             while (matcher.find()) {
                 val src = matcher.group(1)!!
-                val image = getImage(book, src)
+                val image = AiImageGalleryManager.resolveImageFile(src) ?: getImage(book, src)
                 if (!image.exists()) {
                     ret = false
                     continue

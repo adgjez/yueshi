@@ -10,6 +10,7 @@ import com.bumptech.glide.request.RequestOptions
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogPhotoViewBinding
+import io.legado.app.help.ai.AiImageGalleryManager
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.help.glide.OkHttpModelLoader
@@ -48,9 +49,8 @@ class PhotoDialog() : BaseDialogFragment(R.layout.dialog_photo_view) {
             return
         }
         val isBook = arguments.getBoolean("isBook")
-        val file = if (isBook) ReadBook.book?.let { book ->
-            BookHelp.getImage(book, src)
-        } else null
+        val file = AiImageGalleryManager.resolveImageFile(src)
+            ?: if (isBook) ReadBook.book?.let { book -> BookHelp.getImage(book, src) } else null
         if (file?.exists() == true) {
             ImageLoader.load(requireContext(), file)
                 .error(R.drawable.image_loading_error)

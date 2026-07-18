@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 import com.jayway.jsonpath.DocumentContext
 import io.legado.app.utils.GSON
 import io.legado.app.utils.jsonPath
+import io.legado.app.utils.readInt
 import io.legado.app.utils.readLong
 import io.legado.app.utils.readString
 
@@ -29,7 +30,13 @@ data class HttpTTS(
     override var enabledCookieJar: Boolean? = false,
     var loginCheckJs: String? = null,
     @ColumnInfo(defaultValue = "0")
-    var lastUpdateTime: Long = System.currentTimeMillis()
+    var lastUpdateTime: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "1")
+    var synthesisThreadCount: Int = 1,
+    @ColumnInfo(defaultValue = "")
+    var speakersJson: String = "",
+    @ColumnInfo(defaultValue = "")
+    var emotionsJson: String = ""
 ) : BaseSource {
 
     override fun getTag(): String {
@@ -50,7 +57,10 @@ data class HttpTTS(
                 header == source.header &&
                 jsLib == source.jsLib &&
                 enabledCookieJar == source.enabledCookieJar &&
-                loginCheckJs == source.loginCheckJs
+                loginCheckJs == source.loginCheckJs &&
+                synthesisThreadCount == source.synthesisThreadCount &&
+                speakersJson == source.speakersJson &&
+                emotionsJson == source.emotionsJson
     }
 
     @Suppress("MemberVisibilityCanBePrivate")
@@ -70,7 +80,10 @@ data class HttpTTS(
                     header = doc.readString("$.header"),
                     loginCheckJs = doc.readString("$.loginCheckJs"),
                     lastUpdateTime = doc.readLong("$.lastUpdateTime") ?: System.currentTimeMillis(),
-                    jsLib = doc.readString("$.jsLib")
+                    jsLib = doc.readString("$.jsLib"),
+                    synthesisThreadCount = doc.readInt("$.synthesisThreadCount") ?: 1,
+                    speakersJson = doc.readString("$.speakersJson") ?: "",
+                    emotionsJson = doc.readString("$.emotionsJson") ?: ""
                 )
             }
         }

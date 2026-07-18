@@ -763,6 +763,8 @@ class ReadMenu @JvmOverloads constructor(
         fun skipToChapter(index: Int)
         fun onMenuShow()
         fun onMenuHide()
+        fun openReadAiSummary()
+        fun openReadAssistant() = Unit
     }
 
 }

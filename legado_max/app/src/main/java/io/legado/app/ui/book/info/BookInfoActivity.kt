@@ -43,6 +43,7 @@ import io.legado.app.help.AppWebDav
 import io.legado.app.help.GlideImageGetter
 import io.legado.app.help.TextViewTagHandler
 import io.legado.app.help.WebCacheManager
+import io.legado.app.help.ai.AiImageGalleryManager
 import io.legado.app.help.book.addType
 import io.legado.app.help.book.getRemoteUrl
 import io.legado.app.help.book.isAudio
@@ -93,6 +94,7 @@ import io.legado.app.ui.book.readRecord.BookReadRecordActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.login.SourceLoginActivity
+import io.legado.app.ui.main.ai.AiImageGalleryActivity
 import io.legado.app.ui.video.VideoPlayerActivity
 import io.legado.app.ui.widget.dialog.PhotoDialog
 import io.legado.app.ui.widget.dialog.VariableDialog
@@ -467,6 +469,16 @@ class BookInfoActivity :
                             cancelButton()
                         }
                     } ?: upLoadBook(book)
+                }
+            }
+
+            R.id.menu_ai_image_gallery -> {
+                viewModel.getBook()?.let { book ->
+                    val key = AiImageGalleryManager.buildBookKey(book.name, book.getRealAuthor())
+                    startActivity(Intent(this, AiImageGalleryActivity::class.java).apply {
+                        putExtra(AiImageGalleryActivity.EXTRA_BOOK_KEY, key)
+                        putExtra(AiImageGalleryActivity.EXTRA_TITLE, getString(R.string.ai_image_gallery))
+                    })
                 }
             }
         }
