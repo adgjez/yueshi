@@ -10,6 +10,7 @@ import io.legado.app.data.ai.AiChatException
 import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.data.ai.AiChatSession
 import io.legado.app.data.ai.AiContextSummary
+import io.legado.app.data.ai.AiSkillConfig
 import io.legado.app.data.entities.AiAgentJob
 import io.legado.app.data.entities.AiAgentSession
 import io.legado.app.data.entities.AiMemoryItem
