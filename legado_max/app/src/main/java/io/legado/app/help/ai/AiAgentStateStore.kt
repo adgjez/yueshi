@@ -120,6 +120,33 @@ object AiAgentStateStore {
         )
     }
 
+    /**
+     * 独立埋点：不依赖 run 上下文，直接插入 AiAgentTrace。
+     *
+     * 适用于 read aloud 角色分配、AI 图像生成等"非 agent run"的 LLM 调用。
+     * 使用 scope 作为 sessionId 便于按场景查询（如 "read_aloud" / "image"）。
+     */
+    fun traceStandalone(
+        scope: String,
+        eventType: String,
+        payload: JSONObject,
+        success: Boolean = true,
+        usage: AiUsageStats? = null
+    ) {
+        val now = System.currentTimeMillis()
+        appDb.aiAgentDao.insertTrace(
+            AiAgentTrace(
+                sessionId = scope,
+                jobId = "",
+                eventType = eventType,
+                payloadJson = payload.toString().take(16_000),
+                usageJson = usage?.toJson()?.toString().orEmpty(),
+                success = success,
+                createdAt = now
+            )
+        )
+    }
+
     fun finish(run: Run?, success: Boolean, outputJson: String = "", error: String = "") {
         if (run == null) return
         val status = if (success) AiAgentJob.STATUS_DONE else AiAgentJob.STATUS_FAILED
