@@ -3,6 +3,7 @@ package io.legado.app.help.ai
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
+import io.legado.app.data.entities.AiAgentTrace
 import io.legado.app.data.entities.AiReadAloudRoleCache
 import io.legado.app.data.entities.AiReadAloudUsageRecord
 import io.legado.app.data.entities.Book
@@ -38,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object AiReadAloudRoleService {
 
+    private const val TRACE_SCOPE_READ_ALOUD = "read_aloud"
     private const val TOOL_RECORD_SEGMENTS = "record_read_aloud_role_segments"
     private const val TOOL_CONFIRM_UNITS = "confirm_read_aloud_role_units"
     private const val TARGET_GROUP_SIZE = 12
@@ -1440,6 +1442,16 @@ object AiReadAloudRoleService {
             if (fullChapterMode) 1
             else AppConfig.aiReadAloudRoleThreadCount
         )
+        AiAgentStateStore.traceStandalone(
+            scope = TRACE_SCOPE_READ_ALOUD,
+            eventType = AiAgentTrace.EVENT_MODEL_REQUEST,
+            payload = JSONObject()
+                .put("book", book.name)
+                .put("chapter", textChapter.title)
+                .put("batchCount", batches.size)
+                .put("attempt", attempt)
+                .put("threadCount", semaphore.availablePermits)
+        )
         val results = batches.map { batch ->
             async {
                 semaphore.withPermit {
@@ -1496,6 +1508,19 @@ object AiReadAloudRoleService {
         return@supervisorScope results
             .filter { it.failed }
             .map { it.batch }
+            .also { failed ->
+                AiAgentStateStore.traceStandalone(
+                    scope = TRACE_SCOPE_READ_ALOUD,
+                    eventType = AiAgentTrace.EVENT_MODEL_RESPONSE,
+                    payload = JSONObject()
+                        .put("book", book.name)
+                        .put("chapter", textChapter.title)
+                        .put("attempt", attempt)
+                        .put("total", results.size)
+                        .put("succeeded", results.count { !it.failed })
+                        .put("failed", failed.size)
+                )
+            }
     }
 
     private fun expandedRetryContextParagraphs(

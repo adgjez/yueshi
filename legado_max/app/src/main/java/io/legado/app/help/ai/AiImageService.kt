@@ -4,6 +4,7 @@ import android.util.Base64
 import com.script.buildScriptBindings
 import com.script.rhino.RhinoScriptEngine
 import io.legado.app.constant.AppLog
+import io.legado.app.data.entities.AiAgentTrace
 import io.legado.app.data.entities.AiGeneratedImage
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.help.CacheManager
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit
 
 object AiImageService {
 
+    private const val TRACE_SCOPE_IMAGE = "image"
     private const val MAX_IMAGE_BYTES = 32 * 1024 * 1024
     private const val MAX_IMAGE_RESPONSE_BYTES = 48L * 1024L * 1024L
 
@@ -85,6 +87,14 @@ object AiImageService {
     private suspend fun generateByOpenAi(prompt: String, provider: AiImageProviderConfig): ImageGenerationResult {
         val baseUrl = normalizeBaseUrl(provider.baseUrl)
         require(baseUrl.isNotBlank()) { "Base URL is empty" }
+        AiAgentStateStore.traceStandalone(
+            scope = TRACE_SCOPE_IMAGE,
+            eventType = AiAgentTrace.EVENT_MODEL_REQUEST,
+            payload = JSONObject()
+                .put("provider", provider.id.take(200))
+                .put("model", provider.model.take(200))
+                .put("promptLen", prompt.length)
+        )
         val params = runCatching { JSONObject(provider.defaultParamsJson.ifBlank { "{}" }) }
             .getOrElse { throwable ->
                 AppLog.put(
