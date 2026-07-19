@@ -38,7 +38,10 @@ class AiConfigFragment : ComposeSettingFragment() {
     private val defaultSkillUrls = listOf(
         "https://raw.githubusercontent.com/DandanLLab/legadoSkill/main/.trae/skills/legado-book-source-tamer/SKILL.md",
         "https://raw.githubusercontent.com/DandanLLab/legadoSkill/main/skills/SKILLV0.7.md",
-        "https://raw.githubusercontent.com/DandanLLab/legadoSkill/main/SKILL.md"
+        "https://cdn.jsdelivr.net/gh/DandanLLab/legadoSkill@main/.trae/skills/legado-book-source-tamer/SKILL.md",
+        "https://cdn.jsdelivr.net/gh/DandanLLab/legadoSkill@main/skills/SKILLV0.7.md",
+        "https://fastly.jsdelivr.net/gh/DandanLLab/legadoSkill@main/.trae/skills/legado-book-source-tamer/SKILL.md",
+        "https://fastly.jsdelivr.net/gh/DandanLLab/legadoSkill@main/skills/SKILLV0.7.md"
     )
 
     private companion object {
@@ -126,19 +129,19 @@ class AiConfigFragment : ComposeSettingFragment() {
                         ),
                         SettingActionSpec(
                             key = KEY_AI_WORKSPACE,
-                            title = "AI 工作区",
-                            summary = "查看 Agent 创建、编辑和备份的文件",
+                            title = getString(R.string.ai_workspace),
+                            summary = getString(R.string.ai_workspace_summary),
                             onClick = ::openAiWorkspace
                         ),
                         SettingActionSpec(
                             key = PreferKey.aiAgentMaxToolRounds,
-                            title = "AI 工具轮次上限",
-                            summary = "${AppConfig.aiAgentMaxToolRounds} 轮",
+                            title = getString(R.string.ai_agent_max_tool_rounds),
+                            summary = getString(R.string.ai_agent_max_tool_rounds_summary, AppConfig.aiAgentMaxToolRounds),
                             onClick = ::showAgentMaxToolRoundsDialog
                         ),
                         SettingActionSpec(
                             key = PreferKey.aiReadToolMode,
-                            title = "正文问 AI 工具范围",
+                            title = getString(R.string.ai_read_tool_mode),
                             summary = readToolModeLabel(),
                             onClick = ::showReadToolModeDialog
                         ),
@@ -150,8 +153,8 @@ class AiConfigFragment : ComposeSettingFragment() {
                         ),
                         switch(
                             key = PreferKey.aiThinkingToolbarEnabled,
-                            title = "显示思考工具栏",
-                            summary = "关闭后聊天页不显示思考和工具调用过程卡片，不影响后台执行",
+                            title = getString(R.string.ai_thinking_toolbar_enabled),
+                            summary = getString(R.string.ai_thinking_toolbar_enabled_summary),
                             defaultValue = true
                         ),
                         SettingActionSpec(
@@ -166,11 +169,16 @@ class AiConfigFragment : ComposeSettingFragment() {
                         ),
                         SettingActionSpec(
                             key = KEY_WORLD_BOOK_MANAGE,
-                            title = "世界书管理",
+                            title = getString(R.string.ai_world_book_manage),
                             summary = if (worldBooks.isEmpty()) {
-                                "未配置世界书"
+                                getString(R.string.ai_world_book_summary_empty)
                             } else {
-                                "${worldBooks.count { it.enabled }}/${worldBooks.size} 启用 · ${worldBooks.sumOf { it.entries.size }} 条目"
+                                getString(
+                                    R.string.ai_world_book_summary,
+                                    worldBooks.count { it.enabled },
+                                    worldBooks.size,
+                                    worldBooks.sumOf { it.entries.size }
+                                )
                             },
                             onClick = {
                                 startActivity(Intent(requireContext(), AiWorldBookManageActivity::class.java))
@@ -178,8 +186,14 @@ class AiConfigFragment : ComposeSettingFragment() {
                         ),
                         SettingActionSpec(
                             key = KEY_DEFAULT_MODEL_SETTINGS,
-                            title = "默认模型",
-                            summary = "问AI ${modelLabel(AppConfig.aiAskModelConfig)} / 总结 ${modelLabel(AppConfig.aiSummaryModelConfig)} / 多角色 ${modelLabel(AppConfig.aiReadAloudRoleModelConfig)} / 生图 ${imageProviderLabel()}",
+                            title = getString(R.string.ai_default_model),
+                            summary = getString(
+                                R.string.ai_default_model_summary,
+                                modelLabel(AppConfig.aiAskModelConfig),
+                                modelLabel(AppConfig.aiSummaryModelConfig),
+                                modelLabel(AppConfig.aiReadAloudRoleModelConfig),
+                                imageProviderLabel()
+                            ),
                             onClick = ::showDefaultModelSettingsDialog
                         ),
                         SettingActionSpec(
@@ -331,7 +345,7 @@ class AiConfigFragment : ComposeSettingFragment() {
 
     private fun showAgentMaxToolRoundsDialog() {
         showComposeNumberPickerDialog(
-            title = "AI 工具轮次上限",
+            title = getString(R.string.ai_agent_max_tool_rounds),
             value = AppConfig.aiAgentMaxToolRounds,
             minValue = 4,
             maxValue = 64,
@@ -359,9 +373,9 @@ class AiConfigFragment : ComposeSettingFragment() {
 
     private fun readToolModeLabel(): String {
         return when (AppConfig.aiReadToolMode) {
-            AppConfig.AI_READ_TOOL_MODE_ALL -> "全量工具"
-            AppConfig.AI_READ_TOOL_MODE_SAFE -> "阅读安全工具"
-            else -> "使用已启用工具"
+            AppConfig.AI_READ_TOOL_MODE_ALL -> getString(R.string.ai_read_tool_mode_all)
+            AppConfig.AI_READ_TOOL_MODE_SAFE -> getString(R.string.ai_read_tool_mode_safe)
+            else -> getString(R.string.ai_read_tool_mode_enabled)
         }
     }
 
@@ -392,12 +406,12 @@ class AiConfigFragment : ComposeSettingFragment() {
             AppConfig.AI_READ_TOOL_MODE_ALL
         )
         val labels = listOf(
-            "使用已启用工具",
-            "阅读安全工具",
-            "全量工具"
+            getString(R.string.ai_read_tool_mode_enabled),
+            getString(R.string.ai_read_tool_mode_safe),
+            getString(R.string.ai_read_tool_mode_all)
         )
         showComposeActionListDialog(
-            title = "正文问 AI 工具范围",
+            title = getString(R.string.ai_read_tool_mode),
             labels = labels.mapIndexed { index, label ->
                 if (values[index] == AppConfig.aiReadToolMode) "$label ✓" else label
             }
@@ -409,23 +423,23 @@ class AiConfigFragment : ComposeSettingFragment() {
 
     private fun showDefaultModelSettingsDialog() {
         val items = listOf(
-            "正文问 AI：${modelLabel(AppConfig.aiAskModelConfig)}",
-            "文章总结：${modelLabel(AppConfig.aiSummaryModelConfig)}",
-            "多角色：${modelLabel(AppConfig.aiReadAloudRoleModelConfig)}",
-            "图像生成供应商：${imageProviderLabel()}"
+            "${getString(R.string.ai_default_model_ask)}：${modelLabel(AppConfig.aiAskModelConfig)}",
+            "${getString(R.string.ai_default_model_summary_title)}：${modelLabel(AppConfig.aiSummaryModelConfig)}",
+            "${getString(R.string.ai_default_model_read_aloud_role)}：${modelLabel(AppConfig.aiReadAloudRoleModelConfig)}",
+            "${getString(R.string.ai_default_model_image_provider)}：${imageProviderLabel()}"
         )
         showComposeActionListDialog(
-            title = "默认模型",
+            title = getString(R.string.ai_default_model),
             labels = items
         ) { index ->
             when (index) {
-                0 -> selectDefaultModel("正文问 AI 模型", AppConfig.aiAskModelId) {
+                0 -> selectDefaultModel(getString(R.string.ai_default_model_ask_title), AppConfig.aiAskModelId) {
                     AppConfig.aiAskModelId = it
                 }
-                1 -> selectDefaultModel("文章总结模型", AppConfig.aiSummaryModelId) {
+                1 -> selectDefaultModel(getString(R.string.ai_default_model_summary_title_dialog), AppConfig.aiSummaryModelId) {
                     AppConfig.aiSummaryModelId = it
                 }
-                2 -> selectDefaultModel("多角色模型", AppConfig.aiReadAloudRoleModelId) {
+                2 -> selectDefaultModel(getString(R.string.ai_default_model_read_aloud_role_title), AppConfig.aiReadAloudRoleModelId) {
                     AppConfig.aiReadAloudRoleModelId = it
                 }
                 3 -> selectDefaultImageProvider()
@@ -466,7 +480,7 @@ class AiConfigFragment : ComposeSettingFragment() {
         }
         val currentId = AppConfig.aiCurrentImageProvider?.id
         showComposeActionListDialog(
-            title = "图像生成供应商",
+            title = getString(R.string.ai_image_provider_picker_title),
             labels = providers.map { provider ->
                 val label = provider.displayName()
                 if (provider.id == currentId) "$label ✓" else label
@@ -478,7 +492,7 @@ class AiConfigFragment : ComposeSettingFragment() {
     }
 
     private fun modelLabel(model: AiModelConfig?): String {
-        model ?: return "未配置"
+        model ?: return getString(R.string.ai_not_configured)
         val providerName = AppConfig.aiProviderList.firstOrNull { it.id == model.providerId }
             ?.name
             ?.takeIf { it.isNotBlank() }
@@ -486,7 +500,7 @@ class AiConfigFragment : ComposeSettingFragment() {
     }
 
     private fun imageProviderLabel(): String {
-        return AppConfig.aiCurrentImageProvider?.displayName() ?: "未配置"
+        return AppConfig.aiCurrentImageProvider?.displayName() ?: getString(R.string.ai_not_configured)
     }
 
     private fun showEditMcpServerDialog(server: AiMcpServerConfig? = null) {
@@ -629,13 +643,19 @@ class AiConfigFragment : ComposeSettingFragment() {
     }
 
     private fun showContextCompressionDialog() {
-        val enabledText = if (AppConfig.aiContextCompressionEnabled) "关闭上下文压缩" else "启用上下文压缩"
+        val enabledText = getString(
+            if (AppConfig.aiContextCompressionEnabled) {
+                R.string.ai_context_compression_disable
+            } else {
+                R.string.ai_context_compression_enable
+            }
+        )
         showComposeActionListDialog(
             title = getString(R.string.ai_context_compression),
             labels = listOf(
                 enabledText,
-                "上下文长度: ${AppConfig.aiContextWindowTokens}",
-                "思考上下文: ${AppConfig.aiThinkingContextTokens}"
+                getString(R.string.ai_context_window_label, AppConfig.aiContextWindowTokens),
+                getString(R.string.ai_thinking_context_label, AppConfig.aiThinkingContextTokens)
             )
         ) { index ->
             when (index) {
@@ -807,13 +827,23 @@ class AiConfigFragment : ComposeSettingFragment() {
                 runCatching {
                     var lastError = ""
                     defaultSkillUrls.forEach { skillUrl ->
-                        okHttpClient.newCallResponse {
-                            url(skillUrl)
-                        }.use { response ->
-                            if (response.isSuccessful) {
-                                return@runCatching skillUrl to response.body.string()
+                        try {
+                            okHttpClient.newCallResponse {
+                                url(skillUrl)
+                                get()
+                                connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                                readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+                            }.use { response ->
+                                if (response.isSuccessful) {
+                                    val body = response.body.string()
+                                    if (body.isNotBlank()) {
+                                        return@runCatching skillUrl to body
+                                    }
+                                }
+                                lastError = "${response.code} ${response.message}"
                             }
-                            lastError = "${response.code} ${response.message}"
+                        } catch (e: Exception) {
+                            lastError = e.localizedMessage ?: e.javaClass.simpleName
                         }
                     }
                     error(lastError.ifBlank { "No available SKILL.md" })

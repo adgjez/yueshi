@@ -2346,5 +2346,33 @@
 
     Selected text or question:
     %6$s</string>
+    <string name="ai_workspace">AI workspace</string>
+    <string name="ai_workspace_summary">View files created, edited and backed up by the Agent</string>
+    <string name="ai_agent_max_tool_rounds">AI tool round limit</string>
+    <string name="ai_agent_max_tool_rounds_summary">%1$d rounds</string>
+    <string name="ai_read_tool_mode">In-text Ask AI tool scope</string>
+    <string name="ai_read_tool_mode_enabled">Use enabled tools</string>
+    <string name="ai_read_tool_mode_safe">Reading-safe tools</string>
+    <string name="ai_read_tool_mode_all">All tools</string>
+    <string name="ai_thinking_toolbar_enabled">Show thinking toolbar</string>
+    <string name="ai_thinking_toolbar_enabled_summary">When off, the chat page hides thinking and tool-call cards; background execution is unaffected</string>
+    <string name="ai_world_book_manage">World book management</string>
+    <string name="ai_world_book_summary_empty">No world book configured</string>
+    <string name="ai_world_book_summary">%1$d/%2$d enabled · %3$d entries</string>
+    <string name="ai_default_model">Default models</string>
+    <string name="ai_default_model_summary">Ask AI %1$s / Summary %2$s / Multi-role %3$s / Image %4$s</string>
+    <string name="ai_default_model_ask">Ask AI</string>
+    <string name="ai_default_model_summary_title">Summary</string>
+    <string name="ai_default_model_read_aloud_role">Multi-role</string>
+    <string name="ai_default_model_image_provider">Image provider</string>
+    <string name="ai_default_model_ask_title">Ask AI model</string>
+    <string name="ai_default_model_summary_title_dialog">Summary model</string>
+    <string name="ai_default_model_read_aloud_role_title">Multi-role model</string>
+    <string name="ai_image_provider_picker_title">Image provider</string>
+    <string name="ai_not_configured">Not configured</string>
+    <string name="ai_context_compression_disable">Disable context compression</string>
+    <string name="ai_context_compression_enable">Enable context compression</string>
+    <string name="ai_context_window_label">Context window: %1$d</string>
+    <string name="ai_thinking_context_label">Thinking context: %1$d</string>
     <string name="unknown">Unknown</string>
 </resources>
