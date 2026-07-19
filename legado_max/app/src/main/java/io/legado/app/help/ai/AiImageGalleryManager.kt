@@ -63,7 +63,11 @@ object AiImageGalleryManager {
         val tempFile = File(imageDir, "$id.tmp")
         val byteCount = runCatching {
             writeImageToTempFile(imageSource, provider, tempFile)
-        }.onFailure {
+        }.onFailure { throwable ->
+            AppLog.put(
+                "AI 图像：写入临时文件失败 id=$id",
+                throwable
+            )
             runCatching { tempFile.delete() }
         }.getOrThrow()
         if (byteCount <= 0L) {

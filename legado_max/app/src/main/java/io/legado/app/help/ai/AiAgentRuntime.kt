@@ -559,7 +559,13 @@ internal object AiAgentRuntime {
     private fun parseToolResultSuccess(result: String): Boolean {
         return runCatching {
             JSONObject(result).optBoolean("ok", true)
-        }.getOrDefault(true)
+        }.getOrElse { throwable ->
+            AppLog.putDebug(
+                "AI 工具：解析工具返回 ok 字段失败，假设成功 result=${result.take(120)}",
+                throwable
+            )
+            true
+        }
     }
 
     private fun StringBuilder.toSafeDebugLog(): String {

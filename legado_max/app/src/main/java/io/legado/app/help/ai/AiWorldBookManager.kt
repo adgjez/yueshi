@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import io.legado.app.constant.AppLog
 import io.legado.app.help.config.AppConfig
 import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.data.ai.AiWorldBookBinding
@@ -392,6 +393,10 @@ object AiWorldBookManager {
                 .put("item", saving.toJson(includeEntries = true, includeBindings = true))
                 .toString()
         }.getOrElse { throwable ->
+            AppLog.put(
+                "AI 工具：导入 WorldBook JSON 失败",
+                throwable
+            )
             jsonError(throwable.localizedMessage ?: throwable.javaClass.simpleName)
         }
     }

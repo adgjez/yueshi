@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
@@ -905,7 +906,13 @@ object AiBookshelfTool {
                 val source = appDb.bookSourceDao.getBookSource(book.origin)
                     ?: throw IllegalStateException("未找到书源")
                 WebBook.getContentAwait(source, book, chapter)
-            }.getOrNull()
+            }.getOrElse { throwable ->
+                AppLog.put(
+                    "AI 工具：加载章节正文失败（缓存未命中且重新抓取失败）book=${book.name} chapter=${chapter.title}",
+                    throwable
+                )
+                null
+            }
             ?: return@withContext errorJson("正文未缓存且读取失败")
         val maxChars = (arguments?.optInt("maxChars", 4000) ?: 4000).coerceIn(200, 20000)
         val normalized = content.replace(Regex("\\s+"), " ").trim()
