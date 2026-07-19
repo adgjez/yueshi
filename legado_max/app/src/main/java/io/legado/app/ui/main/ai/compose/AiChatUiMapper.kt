@@ -253,12 +253,6 @@ private fun AiChatMessage.toTextParts(): List<AiMessagePartUi> {
             books = parsed.books
         )
     }
-    if (parsed.images.isNotEmpty()) {
-        parts += AiMessagePartUi.Images(
-            id = "$id-images",
-            images = parsed.images
-        )
-    }
     return parts
 }
 
@@ -322,8 +316,7 @@ private fun AiImageResultUi.imageKey(): String {
 
 private data class ParsedAssistantContent(
     val content: String,
-    val books: List<AiSearchBookUi>,
-    val images: List<AiImageResultUi>
+    val books: List<AiSearchBookUi>
 )
 
 private val assistantContentCache = object : LruCache<String, ParsedAssistantContent>(96) {}
@@ -332,20 +325,7 @@ private fun parseAssistantContent(content: String): ParsedAssistantContent {
     val cacheKey = "${content.length}:${content.hashCode()}"
     assistantContentCache.get(cacheKey)?.let { return it }
     val books = mutableListOf<AiSearchBookUi>()
-    val images = mutableListOf<AiImageResultUi>()
-    val withoutToolEvents = toolEventBlockRegex.replace(content) { match ->
-        runCatching {
-            val events = JSONObject(match.groupValues[1]).optJSONArray("events") ?: return@runCatching
-            for (index in 0 until events.length()) {
-                val item = events.optJSONObject(index) ?: continue
-                if (item.optString("stage") == "result" && item.optString("name") == "generate_image") {
-                    parseImageResult(item.optString("content"))?.let(images::add)
-                }
-            }
-        }
-        ""
-    }
-    val visibleContent = searchResultBlockRegex.replace(withoutToolEvents) { match ->
+    val visibleContent = searchResultBlockRegex.replace(content) { match ->
         runCatching {
             val results = JSONObject(match.groupValues[1]).optJSONArray("results") ?: return@runCatching
             for (index in 0 until results.length()) {
@@ -356,8 +336,7 @@ private fun parseAssistantContent(content: String): ParsedAssistantContent {
     }.trim()
     return ParsedAssistantContent(
         content = visibleContent,
-        books = books.distinctBy { it.bookUrl },
-        images = images.distinctBy { it.image }
+        books = books.distinctBy { it.bookUrl }
     ).also { assistantContentCache.put(cacheKey, it) }
 }
 
@@ -563,11 +542,6 @@ private fun normalizeStepLabel(label: String): String {
         .replace(" tap to expand", "", ignoreCase = true)
         .trim()
 }
-
-private val toolEventBlockRegex = Regex(
-    "```legado-tool-events\\s*\\n([\\s\\S]*?)\\n```",
-    setOf(RegexOption.MULTILINE)
-)
 
 private val searchResultBlockRegex = Regex(
     "```legado-search-results\\s*\\n([\\s\\S]*?)\\n```",
