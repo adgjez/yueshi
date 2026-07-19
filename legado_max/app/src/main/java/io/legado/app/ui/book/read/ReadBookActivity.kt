@@ -667,6 +667,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
 
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
+            R.id.menu_ai_summary -> openReadAiSummary()
             R.id.menu_toc_regex -> showDialogFragment(
                 TxtTocRuleDialog(ReadBook.book?.tocUrl)
             )
