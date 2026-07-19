@@ -26,6 +26,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.delay
 
 data class AiUsageStats(
     val inputTokens: Int = 0,
@@ -56,6 +57,8 @@ data class AiSingleToolCallResult(
 object AiChatService {
 
     private const val NETWORK_ABORT_RETRY_COUNT = 2
+    private const val RATE_LIMIT_BACKOFF_BASE_MS = 1_000L
+    private const val RATE_LIMIT_BACKOFF_MAX_MS = 8_000L
     private const val MAX_DEBUG_LOG_CHARS = 16_000
     private const val MAX_DEBUG_PAYLOAD_CHARS = 8_000
     private const val TOOL_ONLY_SYSTEM_PROMPT =
@@ -631,6 +634,19 @@ object AiChatService {
                 lastError = throwable
                 if (attempt >= NETWORK_ABORT_RETRY_COUNT || !throwable.isAiRetryableRequestFailure()) {
                     throw throwable
+                }
+                // 429 / rate limit 单独走指数退避：1s → 2s → 4s（cap 8s），
+                // 避免立即重试加剧上游限流。
+                if (throwable.isAiRateLimitFailure()) {
+                    val backoff = (RATE_LIMIT_BACKOFF_BASE_MS shl attempt)
+                        .coerceAtMost(RATE_LIMIT_BACKOFF_MAX_MS)
+                    requestLog.append("round=").append(round)
+                        .append(" retry=").append(attempt)
+                        .append(" rateLimitBackoffMs=").append(backoff)
+                        .append(" reason=").append(throwable.message ?: throwable.javaClass.simpleName)
+                        .append('\n')
+                    onThinking("AI 请求被限流，${backoff / 1000}s 后重试 ${attempt + 1}/${NETWORK_ABORT_RETRY_COUNT}")
+                    delay(backoff)
                 }
             }
         }
@@ -1709,6 +1725,29 @@ object AiChatService {
                 "502" in message ||
                 "503" in message ||
                 "504" in message ||
+                "429" in message ||
+                "rate limit" in message ||
+                "too many requests" in message
+            ) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
+    }
+
+    /**
+     * 仅识别上游限流：429 / rate limit / too many requests。
+     *
+     * 与 isAiRetryableRequestFailure 是包含关系：限流是一种可重试错误，但
+     * 限流需要走指数退避（见 requestCompletionStreamWithRetry），其他可重试
+     * 错误（5xx、network abort 等）则继续走原来的无延迟重试。
+     */
+    private fun Throwable.isAiRateLimitFailure(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            val message = current.message.orEmpty().lowercase()
+            if (
                 "429" in message ||
                 "rate limit" in message ||
                 "too many requests" in message
