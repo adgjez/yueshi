@@ -285,10 +285,14 @@ private fun ImageResultPreview(
                                 scaleType = ImageView.ScaleType.CENTER_CROP
                             }
                         },
-                        update = {
-                            io.legado.app.help.glide.ImageLoader.load(context, image.image)
-                                .error(io.legado.app.R.drawable.image_loading_error)
-                                .into(it)
+                        update = { imageView ->
+                            val tag = image.imageId.ifBlank { image.image }
+                            if (imageView.tag != tag) {
+                                imageView.tag = tag
+                                io.legado.app.help.glide.ImageLoader.load(context, image.image)
+                                    .error(io.legado.app.R.drawable.image_loading_error)
+                                    .into(imageView)
+                            }
                         },
                         onRelease = { it.releaseComposeImage() }
                     )
