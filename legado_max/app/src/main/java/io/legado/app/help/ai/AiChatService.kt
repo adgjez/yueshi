@@ -292,7 +292,13 @@ object AiChatService {
         onUsage: (AiUsageStats) -> Unit = {},
         agentRun: AiAgentStateStore.Run? = null,
         memoryContext: AiMemoryContext? = null,
-        agentMode: AiAgentMode = AiAgentMode.NORMAL
+        agentMode: AiAgentMode = AiAgentMode.NORMAL,
+        /**
+         * 高危工具执行前的用户确认回调。传 null 表示采用 [AiToolExecutionOptions]
+         * 默认的"始终放行"实现 —— 适合后台/批处理；接入前台 UI 的调用方
+         * （如 [io.legado.app.ui.main.ai.AiChatViewModel]）应注入弹窗实现。
+         */
+        riskConfirmation: (suspend (toolName: String, args: String, risk: AiToolRisk) -> Boolean)? = null
     ): String {
         val modelConfig = modelConfigOverride ?: AppConfig.aiCurrentModelConfig
         val provider = modelConfigOverride?.let { AppConfig.aiProviderForModel(it) }
@@ -442,7 +448,8 @@ object AiChatService {
                 extraToolNames = extraToolNames,
                 agentRun = agentRun,
                 maxToolRounds = maxToolRoundsForMode(agentMode),
-                requireGoalCompletion = agentMode == AiAgentMode.GOAL
+                requireGoalCompletion = agentMode == AiAgentMode.GOAL,
+                riskConfirmation = riskConfirmation
             ) { roundNo, roundMessages, roundTools ->
                 requestCompletionStreamWithFallback(
                     chatUrl = chatUrl,
