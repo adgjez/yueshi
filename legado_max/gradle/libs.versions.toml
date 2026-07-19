@@ -35,6 +35,7 @@ preference = "1.2.1"
 quickChineseTransfer = "0.2.17"
 
 splitties = "3.0.0"
+security-crypto = "1.0.0"
 desugar = "2.1.5"
 
 #kotlinxSerialization = "1.8.0"
@@ -194,7 +195,6 @@ splitties-appctx = { module = "com.louiscad.splitties:splitties-appctx", version
 splitties-activities = { module = "com.louiscad.splitties:splitties-activities", version.ref = "splitties" }
 splitties-systemservices = { module = "com.louiscad.splitties:splitties-systemservices", version.ref = "splitties" }
 splitties-views = { module = "com.louiscad.splitties:splitties-views", version.ref = "splitties" }
-
 androidx-runner = { module = "androidx.test:runner", version = "1.7.0" }
 androidx-swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "swiperefreshlayout" }
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
