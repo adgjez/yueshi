@@ -44,6 +44,7 @@ jobs:
       # 仅打包 arm64-v8a：减少 dex 合并和 native lib 打包时间。
       - name: Assemble Debug APK
         run: |
+          chmod +x gradlew
           ./gradlew :app:assembleAppMaxDebug \
             -Pabi=arm64-v8a \
             -PVERSION_CODE="$(($(date -u +%s) / 60))" \
