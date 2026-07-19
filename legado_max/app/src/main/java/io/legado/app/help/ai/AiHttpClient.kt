@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import io.legado.app.constant.AppConst
 import io.legado.app.help.config.AppConfig
 import okhttp3.ConnectionSpec
 import okhttp3.Interceptor
@@ -82,5 +83,3 @@ object AiHttpClient {
         }
     }
 }
-
-private typealias AppConst = io.legado.app.constant.AppConst

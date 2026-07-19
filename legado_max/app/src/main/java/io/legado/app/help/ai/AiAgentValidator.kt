@@ -39,12 +39,12 @@ internal object AiAgentValidator {
     ): AiToolValidationResult {
         val trimmed = result.trim()
         if (trimmed.isBlank()) {
-            return AiToolValidationResult(false, "empty_result", "工具返回为空", retryable = true)
+            return AiToolValidationResult(false, "empty_result", "Tool returned empty result", retryable = true)
         }
         val json = parseJson(trimmed) ?: return if (isWriteTool(toolCall.name)) {
-            AiToolValidationResult(false, "invalid_json", "写入类工具必须返回可校验 JSON", retryable = false)
+            AiToolValidationResult(false, "invalid_json", "Write tool must return valid JSON", retryable = false)
         } else {
-            AiToolValidationResult(true, "text_result", "工具返回非 JSON 文本")
+            AiToolValidationResult(true, "text_result", "Tool returned non-JSON text")
         }
         val explicitOk = when {
             json.has("ok") -> json.optBoolean("ok", false)
@@ -56,7 +56,7 @@ internal object AiAgentValidator {
                 ok = false,
                 category = "tool_reported_failure",
                 message = json.optString("error")
-                    .ifBlank { json.optString("message").ifBlank { "工具返回失败" } },
+                    .ifBlank { json.optString("message").ifBlank { "Tool reported failure" } },
                 retryable = isRetryableFailure(json)
             )
         }
@@ -64,7 +64,7 @@ internal object AiAgentValidator {
             val writeValidation = validateWriteTool(toolCall.name, json)
             if (!writeValidation.ok) return writeValidation
         }
-        return AiToolValidationResult(true, "ok", "工具结果通过校验")
+        return AiToolValidationResult(true, "ok", "Tool result passed validation")
     }
 
     fun wrapFailedResult(
@@ -91,7 +91,7 @@ internal object AiAgentValidator {
                 return AiToolValidationResult(
                     ok = false,
                     category = "partial_write",
-                    message = "批量设置只成功 $success/$total",
+                    message = "Batch set only succeeded $success/$total",
                     retryable = false
                 )
             }
@@ -100,7 +100,7 @@ internal object AiAgentValidator {
             val total = json.optInt("total", json.optInt("totalCount", -1))
             val success = json.optInt("success", json.optInt("successCount", -1))
             if (total > 0 && success >= 0 && success < total) {
-                return AiToolValidationResult(false, "partial_write", "批量工具只成功 $success/$total")
+                return AiToolValidationResult(false, "partial_write", "Batch tool only succeeded $success/$total")
             }
         }
         val hasEvidence = json.has("item") ||
@@ -114,11 +114,11 @@ internal object AiAgentValidator {
             return AiToolValidationResult(
                 ok = false,
                 category = "weak_write_evidence",
-                message = "写入类工具缺少可核对结果字段",
+                message = "Write tool missing verifiable result field",
                 retryable = false
             )
         }
-        return AiToolValidationResult(true, "ok", "写入结果通过校验")
+        return AiToolValidationResult(true, "ok", "Write result passed validation")
     }
 
     private fun parseJson(value: String): JSONObject? {

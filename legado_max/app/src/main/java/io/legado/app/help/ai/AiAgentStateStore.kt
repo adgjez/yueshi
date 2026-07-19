@@ -69,17 +69,15 @@ object AiAgentStateStore {
     ) {
         if (run == null) return
         val now = System.currentTimeMillis()
-        appDb.aiAgentDao.insertTrace(
-            AiAgentTrace(
-                sessionId = run.sessionId,
-                jobId = run.jobId,
-                round = round,
-                eventType = eventType,
-                payloadJson = payload.toString().take(16_000),
-                usageJson = usage?.toJson()?.toString().orEmpty(),
-                success = success,
-                createdAt = now
-            )
+        insertTrace(
+            sessionId = run.sessionId,
+            jobId = run.jobId,
+            eventType = eventType,
+            payload = payload,
+            round = round,
+            success = success,
+            usage = usage,
+            createdAt = now
         )
         val checkpoint = buildCheckpoint(
             eventType = eventType,
@@ -133,16 +131,36 @@ object AiAgentStateStore {
         success: Boolean = true,
         usage: AiUsageStats? = null
     ) {
-        val now = System.currentTimeMillis()
+        insertTrace(
+            sessionId = scope,
+            jobId = "",
+            eventType = eventType,
+            payload = payload,
+            success = success,
+            usage = usage
+        )
+    }
+
+    private fun insertTrace(
+        sessionId: String,
+        jobId: String,
+        eventType: String,
+        payload: JSONObject,
+        round: Int = 0,
+        success: Boolean = true,
+        usage: AiUsageStats? = null,
+        createdAt: Long = System.currentTimeMillis()
+    ) {
         appDb.aiAgentDao.insertTrace(
             AiAgentTrace(
-                sessionId = scope,
-                jobId = "",
+                sessionId = sessionId,
+                jobId = jobId,
+                round = round,
                 eventType = eventType,
                 payloadJson = payload.toString().take(16_000),
                 usageJson = usage?.toJson()?.toString().orEmpty(),
                 success = success,
-                createdAt = now
+                createdAt = createdAt
             )
         )
     }

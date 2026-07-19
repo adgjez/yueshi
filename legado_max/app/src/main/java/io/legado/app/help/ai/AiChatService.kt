@@ -59,7 +59,6 @@ object AiChatService {
     private const val NETWORK_ABORT_RETRY_COUNT = 2
     private const val RATE_LIMIT_BACKOFF_BASE_MS = 1_000L
     private const val RATE_LIMIT_BACKOFF_MAX_MS = 8_000L
-    private const val MAX_DEBUG_LOG_CHARS = 16_000
     private const val MAX_DEBUG_PAYLOAD_CHARS = 8_000
     private const val TOOL_ONLY_SYSTEM_PROMPT =
         "You are a deterministic extraction worker. Read the user payload and call the provided tool with complete, valid JSON. Do not answer with prose unless the tool is impossible."
@@ -1517,26 +1516,6 @@ object AiChatService {
 
     private fun stripSearchResultBlocks(content: String): String {
         return searchResultBlockRegex.replace(content, "").trim()
-    }
-
-    private fun StringBuilder.toSafeDebugLog(): String {
-        return safeDebugLog(toString())
-    }
-
-    internal fun safeDebugLog(text: String): String {
-        return safeDebugPayload(text, MAX_DEBUG_LOG_CHARS)
-    }
-
-    private fun safeDebugPayload(text: String, maxChars: Int = MAX_DEBUG_PAYLOAD_CHARS): String {
-        val sanitized = text
-            .replace(Regex("Bearer\\s+[^\\s\"']+", RegexOption.IGNORE_CASE), "Bearer <redacted>")
-            .replace(Regex("(\"(?:api[_-]?key|authorization|token|secret)\"\\s*:\\s*\")([^\"]+)(\")", RegexOption.IGNORE_CASE), "$1<redacted>$3")
-            .replace(Regex("data:image/[^\\s\"')]+"), "data:image/<redacted>")
-        return if (sanitized.length <= maxChars) {
-            sanitized
-        } else {
-            sanitized.take(maxChars) + "\n...<truncated ${sanitized.length - maxChars} chars>"
-        }
     }
 
     private fun requiresBookshelfTool(messages: List<AiChatMessage>): Boolean {
