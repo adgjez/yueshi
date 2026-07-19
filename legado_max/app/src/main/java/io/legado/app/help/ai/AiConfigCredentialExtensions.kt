@@ -7,41 +7,23 @@ import io.legado.app.data.ai.AiProviderConfig
 /**
  * 把列表中各项的 `apiKey` 从 [AiCredentialStore] 取出来填回去。
  *
- *  - 优先用 [AiCredentialStore.peekCached]（即加密存储）值。
- *  - 若 store 缺值而 entry 自带明文（老数据兼容），调用 [AiCredentialStore.putSync]
- *    把它挪到 store（同时清掉 entry 的明文）。
- *
- * 读到的列表对外保持"完整"形态，调用方无需关心 apiKey 是从哪来的。
+ * setter 走 [persistProviderApiKeys] 后 list JSON 里的 `apiKey` 字段永远是
+ * 空字符串（单一事实源在 store），hydrate 只负责从 store 读回来。
  */
 internal fun List<AiProviderConfig>.hydrateProviderApiKeys(
     keyOf: (String) -> String
 ): List<AiProviderConfig> = map { provider ->
     val storeKey = keyOf(provider.id)
     val cached = AiCredentialStore.peekOrLoad(storeKey)
-    when {
-        cached != null -> provider.copy(apiKey = cached)
-        provider.apiKey.isNotBlank() -> {
-            // 旧数据：明文嵌在 list 里，迁到 store
-            AiCredentialStore.putSync(storeKey, provider.apiKey)
-            provider
-        }
-        else -> provider
-    }
+    if (cached != null) provider.copy(apiKey = cached) else provider
 }
 
 internal fun List<AiMcpServerConfig>.hydrateMcpApiKeys(
     keyOf: (String) -> String
 ): List<AiMcpServerConfig> = map { server ->
     val storeKey = keyOf(server.id)
-    val cached = AiCredentialStore.peekCached(storeKey)
-    when {
-        cached != null -> server.copy(apiKey = cached)
-        server.apiKey.isNotBlank() -> {
-            AiCredentialStore.putSync(storeKey, server.apiKey)
-            server
-        }
-        else -> server
-    }
+    val cached = AiCredentialStore.peekOrLoad(storeKey)
+    if (cached != null) server.copy(apiKey = cached) else server
 }
 
 internal fun List<AiImageProviderConfig>.hydrateImageApiKeys(
@@ -49,14 +31,7 @@ internal fun List<AiImageProviderConfig>.hydrateImageApiKeys(
 ): List<AiImageProviderConfig> = map { provider ->
     val storeKey = keyOf(provider.id)
     val cached = AiCredentialStore.peekOrLoad(storeKey)
-    when {
-        cached != null -> provider.copy(apiKey = cached)
-        provider.apiKey.isNotBlank() -> {
-            AiCredentialStore.putSync(storeKey, provider.apiKey)
-            provider
-        }
-        else -> provider
-    }
+    if (cached != null) provider.copy(apiKey = cached) else provider
 }
 
 /**

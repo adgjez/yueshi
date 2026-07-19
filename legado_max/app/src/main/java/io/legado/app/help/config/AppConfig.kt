@@ -2122,6 +2122,22 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             if (key.isBlank()) appCtx.removePref(PreferKey.aiTavilyApiKey)
         }
 
+    // ==================== AI 列表 result cache ====================
+    // readAiProviders / readAiMcpServers / readAiModelsRaw 在 LLM 入口被高频调用
+    // （单次请求 5+ 次）。每次都跑 SP 读 + GSON 反序列化 + mapNotNull + hydrate，
+    // 主线程上累积到 ~50ms+。这里把解析后的结果缓存住，setter / persist 写盘后
+    // 置 null 失效；老 v1.x 单字段迁移完成后由 [migrateLegacyAiConfigIfNeeded] 触发。
+    @Volatile
+    private var cachedProviders: List<AiProviderConfig>? = null
+
+    @Volatile
+    private var cachedMcpServers: List<AiMcpServerConfig>? = null
+
+    @Volatile
+    private var cachedAiModelsRaw: List<AiModelConfig>? = null
+
+    private val aiMigratedToList = java.util.concurrent.atomic.AtomicBoolean(false)
+
     var aiTavilyBaseUrl: String
         get() = appCtx.getPrefString(PreferKey.aiTavilyBaseUrl, "https://api.tavily.com/search")
             ?: "https://api.tavily.com/search"
@@ -2206,6 +2222,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         } else {
             appCtx.putPrefString(PreferKey.aiProviderList, GSON.toJson(stored))
         }
+        cachedProviders = null
     }
 
     private fun persistAiModels(models: List<AiModelConfig>) {
@@ -2214,6 +2231,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         } else {
             appCtx.putPrefString(PreferKey.aiModelConfigList, GSON.toJson(models))
         }
+        cachedAiModelsRaw = null
     }
 
     private fun sceneAiModelId(key: String): String? {
@@ -2260,10 +2278,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     }
 
     private fun readAiMcpServers(): List<AiMcpServerConfig> {
-        return normalizeAiMcpServers(
+        cachedMcpServers?.let { return it }
+        val result = normalizeAiMcpServers(
             GSON.fromJsonArray<AiMcpServerConfig>(appCtx.getPrefString(PreferKey.aiMcpServerList))
                 .getOrDefault(emptyList())
         ).hydrateMcpApiKeys(AiCredentialKeys::mcpApiKey)
+        cachedMcpServers = result
+        return result
     }
 
     private fun normalizeAiMcpServers(value: List<AiMcpServerConfig>): List<AiMcpServerConfig> {
@@ -2752,9 +2773,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     }
 
     private fun migrateLegacyAiConfigIfNeeded() {
+        // 幂等：成功迁一次后置标志位，后续 readAiProviders / readAiModels 不再重复跑。
+        if (aiMigratedToList.get()) return
         if (!appCtx.getPrefString(PreferKey.aiProviderList).isNullOrBlank()
             || !appCtx.getPrefString(PreferKey.aiModelConfigList).isNullOrBlank()
         ) {
+            aiMigratedToList.set(true)
             return
         }
         val legacyBaseUrl = appCtx.getPrefString(PreferKey.aiBaseUrl, "")?.trim().orEmpty()
@@ -2765,6 +2789,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             .filter { it.isNotEmpty() }
             .distinct()
         if (legacyBaseUrl.isBlank() && legacyApiKey.isBlank() && legacyModels.isEmpty()) {
+            aiMigratedToList.set(true)
             return
         }
         val provider = AiProviderConfig(
@@ -2788,6 +2813,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         } else {
             appCtx.putPrefString(PreferKey.aiCurrentModelId, currentModel.id)
         }
+        aiMigratedToList.set(true)
     }
 
     private fun resolveAiProviderName(baseUrl: String): String {
