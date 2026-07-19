@@ -49,17 +49,17 @@ jobs:
           sed -i 's|https\\://mirrors.cloud.tencent.com/gradle/|https\\://services.gradle.org/distributions/|' gradle/wrapper/gradle-wrapper.properties
           cat gradle/wrapper/gradle-wrapper.properties | grep distributionUrl
 
-      - name: Configure Gradle for CI (memory, parallel, build cache)
+      - name: Configure Gradle for CI (memory + build cache)
         run: |
           # Kotlin compiler runs in its own daemon; give it dedicated heap.
-          # Enable Gradle parallel + build cache for incremental builds.
+          # 不启用 org.gradle.parallel：在 2 vCPU runner 上并行导致内存竞争，
+          # Kotlin 编译耗时从 4m15s 退化到 6m34s。
           {
             echo ""
             echo "# ---- CI-only tuning ----"
             echo "kotlin.daemon.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
             echo "kotlin.daemon.useFallbackStrategy=true"
             echo "org.gradle.jvmargs=-XX:+UseParallelGC -Xmx4g -Xms512m -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
-            echo "org.gradle.parallel=true"
             echo "org.gradle.caching=true"
             echo "org.gradle.configuration-cache=false"
             echo "org.gradle.daemon=true"
@@ -67,14 +67,13 @@ jobs:
           echo "---- gradle.properties (tail) ----"
           tail -n 12 gradle.properties
 
-      - name: Cache Gradle
-        uses: actions/cache@v6
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('legado_max/**/*.gradle*', 'legado_max/gradle/libs.versions.toml', 'legado_max/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
+          # main 分支可写缓存，PR 分支只读复用，避免频繁写 1GB cache
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          # 自动清理旧缓存，避免 GitHub cache 配额耗尽
+          gradle-home-cache-cleanup: true
 
       # 合并为一次 Gradle 调用：直接 assemble，让同一 daemon 内增量复用 KSP/Kotlin 编译结果，
       # 避免原先两步 --no-daemon 导致的重复编译（节省约 3-4 分钟）。
