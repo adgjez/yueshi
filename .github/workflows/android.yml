@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# 同一分支/PR 的新 push 取消旧的运行，避免重复占用 runner
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Compile & Assemble Debug APK
@@ -44,17 +49,23 @@ jobs:
           sed -i 's|https\\://mirrors.cloud.tencent.com/gradle/|https\\://services.gradle.org/distributions/|' gradle/wrapper/gradle-wrapper.properties
           cat gradle/wrapper/gradle-wrapper.properties | grep distributionUrl
 
-      - name: Configure Kotlin daemon memory (avoid OOM)
+      - name: Configure Gradle for CI (memory, parallel, build cache)
         run: |
           # Kotlin compiler runs in its own daemon; give it dedicated heap.
-          # Also force in-process strategy fallback if daemon cannot start.
+          # Enable Gradle parallel + build cache for incremental builds.
           {
+            echo ""
+            echo "# ---- CI-only tuning ----"
             echo "kotlin.daemon.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
             echo "kotlin.daemon.useFallbackStrategy=true"
             echo "org.gradle.jvmargs=-XX:+UseParallelGC -Xmx4g -Xms512m -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+            echo "org.gradle.parallel=true"
+            echo "org.gradle.caching=true"
+            echo "org.gradle.configuration-cache=false"
+            echo "org.gradle.daemon=true"
           } >> gradle.properties
           echo "---- gradle.properties (tail) ----"
-          tail -n 8 gradle.properties
+          tail -n 12 gradle.properties
 
       - name: Cache Gradle
         uses: actions/cache@v6
@@ -65,24 +76,19 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('legado_max/**/*.gradle*', 'legado_max/gradle/libs.versions.toml', 'legado_max/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Compile Kotlin (compileAppMaxDebugKotlin)
-        env:
-          GRADLE_OPTS: >-
-            -Dorg.gradle.workers.max=2
-          JAVA_TOOL_OPTIONS: "-Xmx512m"
-        run: ./gradlew :app:compileAppMaxDebugKotlin --no-daemon --max-workers=2 --stacktrace
-
+      # 合并为一次 Gradle 调用：直接 assemble，让同一 daemon 内增量复用 KSP/Kotlin 编译结果，
+      # 避免原先两步 --no-daemon 导致的重复编译（节省约 3-4 分钟）。
+      # 不使用 --no-daemon：daemon 内可复用配置缓存与 JIT 预热。
+      # 不设置 JAVA_TOOL_OPTIONS：避免与 kotlin.daemon.jvmargs=-Xmx3g 冲突。
       - name: Assemble Debug APK
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.workers.max=2
-          JAVA_TOOL_OPTIONS: "-Xmx512m"
         run: |
           VERSION_CODE=$(($(date -u +%s) / 60))
           ./gradlew :app:assembleAppMaxDebug \
             -Pabi=arm64-v8a \
             -PVERSION_CODE="$VERSION_CODE" \
-            --no-daemon \
             --max-workers=2 \
             --stacktrace
 
