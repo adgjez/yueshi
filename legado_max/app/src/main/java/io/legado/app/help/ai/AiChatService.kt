@@ -1253,9 +1253,10 @@ object AiChatService {
         personaPrompt: String = AppConfig.aiCurrentPersona?.prompt.orEmpty()
     ): MutableList<JSONObject> {
         val conversation = mutableListOf<JSONObject>()
+        val baseSystemPrompt = systemPrompt.ifBlank { AppConfig.DEFAULT_AI_SYSTEM_PROMPT }
         conversation += JSONObject().apply {
             put("role", "system")
-            put("content", systemPrompt.ifBlank { AppConfig.DEFAULT_AI_SYSTEM_PROMPT })
+            put("content", "$baseSystemPrompt\n\n$AI_INJECTION_GUARD_PROMPT")
         }
         conversation += JSONObject().apply {
             put("role", "system")
@@ -1269,25 +1270,25 @@ object AiChatService {
         personaPrompt.takeIf { it.isNotBlank() }?.let { prompt ->
             conversation += JSONObject().apply {
                 put("role", "system")
-                put("content", prompt)
+                put("content", wrapExternalData("persona", "current_persona", prompt))
             }
         }
         contextSummary?.summary?.takeIf { it.isNotBlank() }?.let { summary ->
             conversation += JSONObject().apply {
                 put("role", "system")
-                put("content", "Conversation summary from earlier context:\n$summary")
+                put("content", wrapExternalData("context_summary", "previous_conversation", summary))
             }
         }
         retrievedMemory.toSystemPrompt().takeIf { it.isNotBlank() }?.let { memoryPrompt ->
             conversation += JSONObject().apply {
                 put("role", "system")
-                put("content", memoryPrompt)
+                put("content", wrapExternalData("long_term_memory", "retrieved_memories", memoryPrompt))
             }
         }
         agentPlan.toSystemPrompt().takeIf { it.isNotBlank() }?.let { planPrompt ->
             conversation += JSONObject().apply {
                 put("role", "system")
-                put("content", planPrompt)
+                put("content", wrapExternalData("agent_plan", "execution_plan", planPrompt))
             }
         }
         AiSkillPromptTool.catalogPrompt(activeSkills).takeIf { it.isNotBlank() }?.let { skillCatalog ->
@@ -1344,7 +1345,7 @@ object AiChatService {
         systemPrompt.takeIf { it.isNotBlank() }?.let { prompt ->
             conversation += JSONObject().apply {
                 put("role", "system")
-                put("content", prompt)
+                put("content", "$prompt\n\n$AI_INJECTION_GUARD_PROMPT")
             }
         }
         messages
@@ -1407,9 +1408,11 @@ object AiChatService {
     }
 
     private fun worldBookInjectionMessage(injection: AiWorldBookInjection): JSONObject {
+        val hit = injection.hit
+        val name = "${hit.worldBook.name.ifBlank { "world_book" }} / ${hit.entry.title.ifBlank { "entry" }}"
         return JSONObject().apply {
             put("role", injection.role)
-            put("content", injection.content)
+            put("content", wrapExternalData("world_book_entry", name, injection.content))
         }
     }
 
