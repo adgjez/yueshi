@@ -5,10 +5,10 @@ import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
+import io.legado.app.help.ai.AiHttpClient
 import io.legado.app.help.ai.AiToolRegistry
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.ui.config.compose.ComposeSettingFragment
 import io.legado.app.ui.config.compose.SettingActionSpec
 import io.legado.app.ui.config.compose.SettingPageSpec

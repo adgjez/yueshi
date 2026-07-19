@@ -24,6 +24,12 @@ import io.legado.app.data.ai.AiWorldBookConfig
 import io.legado.app.data.ai.AiWorldBookEntry
 import io.legado.app.help.ai.AiCredentialKeys
 import io.legado.app.help.ai.AiCredentialStore
+import io.legado.app.help.ai.hydrateImageApiKeys
+import io.legado.app.help.ai.hydrateMcpApiKeys
+import io.legado.app.help.ai.hydrateProviderApiKeys
+import io.legado.app.help.ai.persistImageApiKeys
+import io.legado.app.help.ai.persistMcpApiKeys
+import io.legado.app.help.ai.persistProviderApiKeys
 import io.legado.app.data.ai.AI_API_MODE_CHAT_COMPLETIONS
 import io.legado.app.data.ai.AI_API_MODE_RESPONSES
 import io.legado.app.utils.GSON

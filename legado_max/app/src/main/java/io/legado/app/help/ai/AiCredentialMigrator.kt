@@ -1,12 +1,11 @@
 package io.legado.app.help.ai
 
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.ai.AiImageProviderConfig
 import io.legado.app.data.ai.AiMcpServerConfig
 import io.legado.app.data.ai.AiProviderConfig
 import io.legado.app.utils.GSON
+import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.removePref
@@ -44,46 +43,38 @@ object AiCredentialMigrator {
     }
 
     private suspend fun migrateProviderList() =
-        migrateList(
+        migrateList<AiProviderConfig>(
             prefKey = PreferKey.aiProviderList,
-            type = object : TypeToken<List<AiProviderConfig>>() {}.type,
             takeApiKey = { it.apiKey },
             clearApiKey = { cfg -> cfg.copy(apiKey = "") },
             credentialKeyFor = { id -> AiCredentialKeys.providerApiKey(id) },
         )
 
     private suspend fun migrateImageProviderList() =
-        migrateList(
+        migrateList<AiImageProviderConfig>(
             prefKey = PreferKey.aiImageProviderList,
-            type = object : TypeToken<List<AiImageProviderConfig>>() {}.type,
             takeApiKey = { it.apiKey },
             clearApiKey = { cfg -> cfg.copy(apiKey = "") },
             credentialKeyFor = { id -> AiCredentialKeys.imageApiKey(id) },
         )
 
     private suspend fun migrateMcpServerList() =
-        migrateList(
+        migrateList<AiMcpServerConfig>(
             prefKey = PreferKey.aiMcpServerList,
-            type = object : TypeToken<List<AiMcpServerConfig>>() {}.type,
             takeApiKey = { it.apiKey },
             clearApiKey = { cfg -> cfg.copy(apiKey = "") },
             credentialKeyFor = { id -> AiCredentialKeys.mcpApiKey(id) },
         )
 
-    private suspend fun <T> migrateList(
+    private suspend inline fun <reified T> migrateList(
         prefKey: String,
-        type: java.lang.reflect.Type,
         takeApiKey: (T) -> String,
         clearApiKey: (T) -> T,
         credentialKeyFor: (String) -> String,
     ) {
         val raw = appCtx.getPrefString(prefKey)
         if (raw.isNullOrBlank()) return
-        val list: List<T> = try {
-            Gson().fromJson(raw, type) ?: return
-        } catch (t: Throwable) {
-            return
-        }
+        val list: List<T> = GSON.fromJsonArray<T>(raw).getOrDefault(emptyList())
         if (list.isEmpty()) return
         var mutated = false
         val rewritten = list.map { cfg ->
