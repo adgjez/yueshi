@@ -170,6 +170,24 @@ object AiCredentialStore {
      */
     fun peekCached(key: String): String? = cacheMap()[key]
 
+    /**
+     * 同步读：cache 命中直接返回；否则同步从 SharedPreferences 解密并写回 cache。
+     * 用于 hydrate 列表（冷启动 cache 为空时把已存的 API key 取出来填回 provider）。
+     * 与 [get] 走同一条解密路径，但阻塞调用方 —— 内部用 prefs.getString + 一次
+     * AES-GCM decrypt，开销 < 1ms，可以挂在主线程的同步 getter 上。
+     */
+    fun peekOrLoad(key: String): String? {
+        cacheMap()[key]?.let { return it }
+        val prefs = prefs ?: appCtx.getSharedPreferences(
+            PREF_NAME,
+            android.content.Context.MODE_PRIVATE
+        ).also { prefs = it }
+        val raw = prefs.getString(encodeKey(key), null) ?: return null
+        val plain = runCatching { decrypt(raw) }.getOrNull() ?: return null
+        cacheMap()[key] = plain
+        return plain
+    }
+
     suspend fun remove(key: String) {
         withContext(Dispatchers.IO) {
             store().edit().remove(encodeKey(key)).apply()

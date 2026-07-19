@@ -2101,16 +2101,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     var aiTavilyApiKey: String
         get() {
-            // 缓存命中直接读；未命中（首次启动）回退到旧明文 pref 并异步迁移到加密存储。
-            val cached = AiCredentialStore.peekCached(io.legado.app.help.ai.AiCredentialKeys.tavilyApiKey())
-            if (cached != null) return cached
+            val storeKey = io.legado.app.help.ai.AiCredentialKeys.tavilyApiKey()
+            // 1) 已迁到加密 store 的直接走 peekOrLoad
+            AiCredentialStore.peekOrLoad(storeKey)?.let { return it }
+            // 2) v1.x 老用户的 Tavily key 还在明文 pref 里 —— 一次回退并迁到 store
             val legacy = appCtx.getPrefString(PreferKey.aiTavilyApiKey).orEmpty()
             if (legacy.isNotBlank()) {
-                // 把旧明文迁到加密存储；后续读都走 store。
-                AiCredentialStore.putSync(
-                    io.legado.app.help.ai.AiCredentialKeys.tavilyApiKey(),
-                    legacy
-                )
+                AiCredentialStore.putSync(storeKey, legacy)
                 appCtx.removePref(PreferKey.aiTavilyApiKey)
                 return legacy
             }
@@ -2153,7 +2150,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         return normalizeAiProviders(
             GSON.fromJsonArray<AiProviderConfig>(appCtx.getPrefString(PreferKey.aiProviderList))
                 .getOrDefault(emptyList())
-        )
+        ).hydrateProviderApiKeys(AiCredentialKeys::providerApiKey)
     }
 
     private fun readAiModels(validProviderIds: Set<String>): List<AiModelConfig> {
@@ -2266,7 +2263,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         return normalizeAiMcpServers(
             GSON.fromJsonArray<AiMcpServerConfig>(appCtx.getPrefString(PreferKey.aiMcpServerList))
                 .getOrDefault(emptyList())
-        )
+        ).hydrateMcpApiKeys(AiCredentialKeys::mcpApiKey)
     }
 
     private fun normalizeAiMcpServers(value: List<AiMcpServerConfig>): List<AiMcpServerConfig> {

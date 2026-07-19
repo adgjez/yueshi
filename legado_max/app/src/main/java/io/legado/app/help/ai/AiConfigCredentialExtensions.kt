@@ -17,7 +17,7 @@ internal fun List<AiProviderConfig>.hydrateProviderApiKeys(
     keyOf: (String) -> String
 ): List<AiProviderConfig> = map { provider ->
     val storeKey = keyOf(provider.id)
-    val cached = AiCredentialStore.peekCached(storeKey)
+    val cached = AiCredentialStore.peekOrLoad(storeKey)
     when {
         cached != null -> provider.copy(apiKey = cached)
         provider.apiKey.isNotBlank() -> {
@@ -48,7 +48,7 @@ internal fun List<AiImageProviderConfig>.hydrateImageApiKeys(
     keyOf: (String) -> String
 ): List<AiImageProviderConfig> = map { provider ->
     val storeKey = keyOf(provider.id)
-    val cached = AiCredentialStore.peekCached(storeKey)
+    val cached = AiCredentialStore.peekOrLoad(storeKey)
     when {
         cached != null -> provider.copy(apiKey = cached)
         provider.apiKey.isNotBlank() -> {
