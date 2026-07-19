@@ -1323,12 +1323,12 @@ object AiChatService {
                     val (visibleContent, reasoningContent) = splitInlineThinking(
                         stripSearchResultBlocks(message.content)
                     )
-                    put("content", visibleContent)
+                    put("content", normalizeMessageContent(visibleContent))
                     if (reasoningContent.isNotBlank()) {
-                        put("reasoning_content", reasoningContent)
+                        put("reasoning_content", normalizeMessageContent(reasoningContent))
                     }
                 } else {
-                    put("content", stripSearchResultBlocks(message.content))
+                    put("content", normalizeMessageContent(stripSearchResultBlocks(message.content)))
                 }
             }
         }
@@ -1356,7 +1356,7 @@ object AiChatService {
                         "role",
                         if (message.role == AiChatMessage.Role.USER) "user" else "assistant"
                     )
-                    put("content", stripSearchResultBlocks(message.content))
+                    put("content", normalizeMessageContent(stripSearchResultBlocks(message.content)))
                 }
             }
         return conversation

@@ -6,7 +6,9 @@ import io.legado.app.data.entities.AiAgentTrace
 import io.legado.app.help.config.AppConfig
 import io.legado.app.data.ai.AI_API_MODE_RESPONSES
 import io.legado.app.data.ai.AiChatException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import org.json.JSONArray
 import org.json.JSONObject
 import splitties.init.appCtx
@@ -48,6 +50,7 @@ internal object AiAgentRuntime {
             riskConfirmation = riskConfirmation ?: { _, _, _ -> true }
         )
         repeat(maxToolRounds) { round ->
+            currentCoroutineContext().ensureActive()
             val roundNo = round + 1
             AiAgentStateStore.trace(
                 run = agentRun,
@@ -176,6 +179,7 @@ internal object AiAgentRuntime {
                 }
             )
             assistantTurn.toolCalls.forEach { toolCall ->
+                currentCoroutineContext().ensureActive()
                 onStatus(
                     JSONObject().apply {
                         put("key", toolCall.id.ifBlank { toolCall.name })
