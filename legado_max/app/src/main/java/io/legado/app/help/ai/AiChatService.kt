@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import io.legado.app.constant.AppLog
 import io.legado.app.data.entities.AiAgentTrace
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookCharacter
@@ -320,7 +321,13 @@ object AiChatService {
 
         val baseTools = toolOverride ?: runCatching {
             if (useAllTools) AiToolRegistry.resolveAllTools() else AiToolRegistry.resolveAvailableTools()
-        }.getOrDefault(emptyList())
+        }.getOrElse { throwable ->
+            AppLog.put(
+                "AI 工具加载失败，回退为空工具集",
+                throwable
+            )
+            emptyList<AiResolvedTool>()
+        }
         val skillTools = AiSkillPromptTool.resolvedTools(activeSkills)
         val resolvedTools = baseTools
             .plus(extraTools)
@@ -482,6 +489,10 @@ object AiChatService {
                 usage = totalUsage
             )
         }.getOrElse { throwable ->
+            AppLog.put(
+                "AI 工具循环执行失败",
+                throwable
+            )
             AiAgentStateStore.trace(
                 run = agentRun,
                 eventType = AiAgentTrace.EVENT_ERROR,
@@ -725,7 +736,14 @@ object AiChatService {
                 )
             }.filter { it.name.isValidJsonString() }
             if (rendered.isBlank() && toolCalls.isEmpty()) {
-                val fallback = runCatching { extractContent(rawPayload.toString()) }.getOrDefault("")
+                val fallback = runCatching { extractContent(rawPayload.toString()) }
+                    .getOrElse { throwable ->
+                        AppLog.put(
+                            "AI 响应 fallback 提取失败（主解析亦为空）",
+                            throwable
+                        )
+                        ""
+                    }
                 if (fallback.isNotBlank()) {
                     val visibleFallback = stripInlineThinking(fallback, onThinking)
                     onPartial(visibleFallback)

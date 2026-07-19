@@ -86,7 +86,13 @@ object AiImageService {
         val baseUrl = normalizeBaseUrl(provider.baseUrl)
         require(baseUrl.isNotBlank()) { "Base URL is empty" }
         val params = runCatching { JSONObject(provider.defaultParamsJson.ifBlank { "{}" }) }
-            .getOrDefault(JSONObject())
+            .getOrElse { throwable ->
+                AppLog.put(
+                    "AI 图像：解析 provider defaultParamsJson 失败，回退为空对象",
+                    throwable
+                )
+                JSONObject()
+            }
         return if (params.optString("endpoint").equals("responses", true)) {
             generateByResponses(prompt, provider, baseUrl, params)
         } else {
