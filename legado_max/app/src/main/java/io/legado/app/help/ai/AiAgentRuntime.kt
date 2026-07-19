@@ -150,7 +150,7 @@ internal object AiAgentRuntime {
                     )
                 )
                 return if (includeStructuredBlocks) {
-                    appendStructuredBlocks(content, searchResultCards, toolEvents)
+                    appendStructuredBlocks(content, searchResultCards)
                 } else {
                     content
                 }
@@ -291,7 +291,7 @@ internal object AiAgentRuntime {
             )
         }
         return if (includeStructuredBlocks) {
-            appendStructuredBlocks(finalTurn.content, searchResultCards, toolEvents)
+            appendStructuredBlocks(finalTurn.content, searchResultCards)
         } else {
             finalTurn.content
         }
@@ -477,7 +477,7 @@ internal object AiAgentRuntime {
         }
     }
 
-    private fun appendStructuredBlocks(content: String, cards: JSONArray, toolEvents: JSONArray): String {
+    private fun appendStructuredBlocks(content: String, cards: JSONArray): String {
         if (cards.length() == 0) return content
         val payload = JSONObject().apply {
             put("type", "search_book_results")

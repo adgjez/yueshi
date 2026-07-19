@@ -146,7 +146,6 @@ object AiTaskKeepAlive {
     private fun cleanContent(raw: String): String {
         return raw
             .replace(Regex("data:image/[^\\s\"')]+"), "data:image/<stored>")
-            .replace(Regex("```legado-tool-events[\\s\\S]*?```"), "")
             .replace(Regex("\\s+"), " ")
             .trim()
             .take(MAX_CONTENT_LENGTH)
