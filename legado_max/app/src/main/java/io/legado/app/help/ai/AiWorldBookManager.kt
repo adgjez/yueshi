@@ -1,10 +1,10 @@
 package io.legado.app.help.ai
 
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AiChatMessage
-import io.legado.app.ui.main.ai.AiWorldBookBinding
-import io.legado.app.ui.main.ai.AiWorldBookConfig
-import io.legado.app.ui.main.ai.AiWorldBookEntry
+import io.legado.app.data.ai.AiChatMessage
+import io.legado.app.data.ai.AiWorldBookBinding
+import io.legado.app.data.ai.AiWorldBookConfig
+import io.legado.app.data.ai.AiWorldBookEntry
 import org.json.JSONArray
 import org.json.JSONObject
 

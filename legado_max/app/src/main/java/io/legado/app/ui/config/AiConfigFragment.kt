@@ -5,10 +5,10 @@ import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
+import io.legado.app.help.ai.AiHttpClient
 import io.legado.app.help.ai.AiToolRegistry
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.ui.config.compose.ComposeSettingFragment
 import io.legado.app.ui.config.compose.SettingActionSpec
 import io.legado.app.ui.config.compose.SettingPageSpec
@@ -20,10 +20,10 @@ import io.legado.app.ui.widget.compose.showComposeMultiChoiceDialog
 import io.legado.app.ui.widget.compose.showComposeNumberPickerDialog
 import io.legado.app.ui.widget.compose.showComposeTextInputDialog
 import io.legado.app.ui.widget.compose.showComposeTextFormDialogWithChecks
-import io.legado.app.ui.main.ai.AiModelConfig
-import io.legado.app.ui.main.ai.AiMcpServerConfig
+import io.legado.app.data.ai.AiModelConfig
+import io.legado.app.data.ai.AiMcpServerConfig
 import io.legado.app.ui.main.ai.AiImageGalleryActivity
-import io.legado.app.ui.main.ai.AiSkillConfig
+import io.legado.app.data.ai.AiSkillConfig
 import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent
@@ -809,7 +809,7 @@ class AiConfigFragment : ComposeSettingFragment() {
                     var lastError = ""
                     defaultSkillUrls.forEach { skillUrl ->
                         try {
-                            okHttpClient.newCallResponse {
+                            AiHttpClient.client().newCallResponse {
                                 url(skillUrl)
                             }.use { response ->
                                 if (response.isSuccessful) {

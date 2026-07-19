@@ -24,10 +24,10 @@ import io.legado.app.base.BaseActivity
 import io.legado.app.constant.EventBus
 import io.legado.app.help.ai.AiChatService
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AI_API_MODE_CHAT_COMPLETIONS
-import io.legado.app.ui.main.ai.AI_API_MODE_RESPONSES
-import io.legado.app.ui.main.ai.AiModelConfig
-import io.legado.app.ui.main.ai.AiProviderConfig
+import io.legado.app.data.ai.AI_API_MODE_CHAT_COMPLETIONS
+import io.legado.app.data.ai.AI_API_MODE_RESPONSES
+import io.legado.app.data.ai.AiModelConfig
+import io.legado.app.data.ai.AiProviderConfig
 import io.legado.app.ui.widget.compose.ComposeActionListDialog
 import io.legado.app.ui.widget.compose.ComposeConfirmDialog
 import io.legado.app.ui.widget.compose.ComposeFetchedModelDialog

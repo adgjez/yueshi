@@ -1,10 +1,11 @@
 package io.legado.app.help.ai
 
 import io.legado.app.R
+import io.legado.app.constant.AppLog
 import io.legado.app.data.entities.AiAgentTrace
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AI_API_MODE_RESPONSES
-import io.legado.app.ui.main.ai.AiChatException
+import io.legado.app.data.ai.AI_API_MODE_RESPONSES
+import io.legado.app.data.ai.AiChatException
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,6 +27,12 @@ internal object AiAgentRuntime {
         agentRun: AiAgentStateStore.Run?,
         maxToolRounds: Int = AppConfig.aiAgentMaxToolRounds,
         requireGoalCompletion: Boolean = false,
+        /**
+         * 高危工具执行前的用户确认回调。null 时使用 [AiToolExecutionOptions]
+         * 默认的"始终放行"实现（即不询问）。接入 UI 时通常由
+         * [io.legado.app.help.ai.AiChatService] 把上层弹窗实现透传进来。
+         */
+        riskConfirmation: (suspend (toolName: String, args: String, risk: AiToolRisk) -> Boolean)? = null,
         requestAssistantTurn: suspend (
             round: Int,
             messages: List<JSONObject>,
@@ -37,7 +44,8 @@ internal object AiAgentRuntime {
         val toolEvents = JSONArray()
         val toolOptions = AiToolExecutionOptions(
             useAllTools = useAllTools,
-            extraToolNames = extraToolNames
+            extraToolNames = extraToolNames,
+            riskConfirmation = riskConfirmation ?: { _, _, _ -> true }
         )
         repeat(maxToolRounds) { round ->
             val roundNo = round + 1
@@ -312,6 +320,61 @@ internal object AiAgentRuntime {
         onStatus: (JSONObject) -> Unit,
         toolEvents: JSONArray
     ): ValidatedToolExecution {
+        // 高危工具在执行前先询问用户；拒绝则直接返回标准错误 JSON，不再调用工具
+        // 也不计入重试（"被用户拒绝"是终态，不是网络/数据错误）。
+        val toolRisk = AiToolRegistry.riskOfTool(toolCall.name)
+        if (toolRisk == AiToolRisk.HIGH) {
+            val allowed = runCatching {
+                toolOptions.riskConfirmation(toolCall.name, toolCall.arguments, toolRisk)
+            }.getOrElse { throwable ->
+                AppLog.put(
+                    "AI tool risk confirmation failed for ${toolCall.name}: " +
+                            (throwable.message ?: throwable.javaClass.simpleName)
+                )
+                false
+            }
+            if (!allowed) {
+                onStatus(
+                    JSONObject().apply {
+                        put("key", "${toolCall.id.ifBlank { toolCall.name }}_declined")
+                        put("kind", "tool")
+                        put("name", toolCall.name)
+                        put("stage", "declined")
+                        put("label", "高危工具已被用户拒绝")
+                        put("content", toolCall.arguments)
+                        put("success", false)
+                    }
+                )
+                toolEvents.put(
+                    JSONObject().apply {
+                        put("name", toolCall.name)
+                        put("stage", "declined")
+                        put("content", toolCall.arguments)
+                        put("success", false)
+                    }
+                )
+                AiAgentStateStore.trace(
+                    run = agentRun,
+                    eventType = AiAgentTrace.EVENT_VALIDATION,
+                    payload = JSONObject()
+                        .put("name", toolCall.name)
+                        .put("attempt", 0)
+                        .put("declinedByUser", true),
+                    round = roundNo,
+                    success = false
+                )
+                return ValidatedToolExecution(
+                    result = AiToolRegistry.userDeclinedResultJson(toolCall.name),
+                    validation = AiToolValidationResult(
+                        ok = false,
+                        category = "user_declined",
+                        message = "User declined high-risk tool: ${toolCall.name}",
+                        retryable = false
+                    ),
+                    attempts = 0
+                )
+            }
+        }
         var lastResult = ""
         var lastValidation = AiToolValidationResult(
             ok = false,

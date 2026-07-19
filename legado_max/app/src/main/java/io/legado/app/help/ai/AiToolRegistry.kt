@@ -3,6 +3,23 @@ package io.legado.app.help.ai
 import io.legado.app.help.config.AppConfig
 import org.json.JSONObject
 
+/**
+ * 工具风险等级。用于在执行高危工具前要求用户确认。
+ *
+ * 风险等级与具体工具的映射见 [AiToolRegistry.highRiskToolNames]。新加入高危工具
+ * 只需往该集合里加名字；不需要给 [AiResolvedTool] 加字段，避免逐处构造点污染。
+ */
+enum class AiToolRisk {
+    /** 只读/幂等/无副作用 */
+    SAFE,
+
+    /** 修改本地状态但通常可恢复（占位，未来扩展） */
+    MEDIUM,
+
+    /** 不可逆或高代价操作：删除数据、修改全局设置、消耗付费资源等 */
+    HIGH
+}
+
 data class AiResolvedTool(
     val name: String,
     val definition: JSONObject,
@@ -396,6 +413,48 @@ object AiToolRegistry {
                 name.startsWith("query_") ||
                 name.startsWith("read_") ||
                 name.startsWith("fetch_")
+    }
+
+    /**
+     * 高危工具集合：执行前需要用户显式确认。
+     *
+     * 初始范围聚焦在 5 类"不可逆或代价高"操作：
+     *  - 删除数据（角色）
+     *  - 创建可影响书源库的对象（书源）
+     *  - 导入覆盖性数据（世界书 JSON）
+     *  - 删除工作区文件
+     *  - 消耗付费/算力资源的生图
+     *
+     * 后续按需扩展。所有 upsert/set_app_setting/workspace_write_* 等"修改类"工具
+     * 当前仍归为 SAFE —— 未来若用户反馈需确认，再迁移到 MEDIUM/HIGH。
+     */
+    val highRiskToolNames: Set<String> = setOf(
+        "create_book_source",
+        "delete_book_character",
+        "import_world_book_json",
+        "workspace_delete_file",
+        "generate_image"
+    )
+
+    fun riskOfTool(name: String): AiToolRisk {
+        return if (name in highRiskToolNames) AiToolRisk.HIGH else AiToolRisk.SAFE
+    }
+
+    fun isHighRiskTool(name: String): Boolean = riskOfTool(name) == AiToolRisk.HIGH
+
+    /**
+     * 工具被拒执行时给 AI 的统一拒绝原因。集中维护便于在 prompt 注入和
+     * 日志/状态栏展示中保持一致措辞。
+     */
+    fun userDeclinedResultJson(toolName: String): String {
+        return JSONObject().apply {
+            put("ok", false)
+            put(
+                "error",
+                "User declined the high-risk tool call: $toolName. " +
+                        "Ask the user how to proceed or pick a safer alternative."
+            )
+        }.toString()
     }
 
     private fun nativeResolvedTools(): List<AiResolvedTool> {

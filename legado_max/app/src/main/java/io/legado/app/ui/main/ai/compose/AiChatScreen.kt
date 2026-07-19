@@ -97,10 +97,10 @@ import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.ui.about.ReadRecordGoalConfigStore
-import io.legado.app.ui.main.ai.AiAgentMode
-import io.legado.app.ui.main.ai.AiChatMessage
-import io.legado.app.ui.main.ai.AiChatCompanionConfig
-import io.legado.app.ui.main.ai.AiChatSession
+import io.legado.app.data.ai.AiAgentMode
+import io.legado.app.data.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatCompanionConfig
+import io.legado.app.data.ai.AiChatSession
 import io.legado.app.ui.main.ai.AiChatSpeechPlayer
 import io.legado.app.ui.main.ai.AiChatViewModel
 import io.legado.app.ui.book.character.compose.CharacterAvatar
@@ -262,6 +262,9 @@ fun AiChatRoute(
     val autoSpeakEnabled = remember(refreshToken) { AppConfig.aiChatAutoSpeakEnabled }
     val thinkingToolbarEnabled = remember(refreshToken) { AppConfig.aiThinkingToolbarEnabled }
     val enterToSend = remember(refreshToken) { AppConfig.aiEnterToSend }
+    val pendingRiskConfirm by viewModel.pendingRiskConfirm.collectAsState()
+    val context = LocalContext.current
+    val confirmStyle = aiComposeStyle(context)
     AiChatScreen(
         messages = messages,
         requesting = requesting,
@@ -279,6 +282,15 @@ fun AiChatRoute(
         compactHeader = compactHeader,
         actions = actions
     )
+    pendingRiskConfirm?.let { request ->
+        AiToolRiskConfirmDialog(
+            toolName = request.toolName,
+            args = request.args,
+            risk = request.risk,
+            style = confirmStyle,
+            onResolve = { allowed -> viewModel.resolveToolRiskConfirm(allowed) }
+        )
+    }
 }
 
 @Composable

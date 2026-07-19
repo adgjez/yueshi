@@ -8,19 +8,19 @@ import io.legado.app.help.character.BookCharacterProfileMeta
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.postJson
-import io.legado.app.ui.main.ai.AiChatException
-import io.legado.app.ui.main.ai.AiChatMessage
-import io.legado.app.ui.main.ai.AiContextSummary
-import io.legado.app.ui.main.ai.AI_API_MODE_CHAT_COMPLETIONS
-import io.legado.app.ui.main.ai.AI_API_MODE_RESPONSES
-import io.legado.app.ui.main.ai.AiAgentMode
-import io.legado.app.ui.main.ai.AiChatCompanionConfig
-import io.legado.app.ui.main.ai.AiModelConfig
-import io.legado.app.ui.main.ai.AiProviderConfig
-import io.legado.app.ui.main.ai.AiSkillConfig
-import io.legado.app.ui.main.ai.AiWorldBookEntry
+import io.legado.app.help.ai.AiHttpClient
+import io.legado.app.data.ai.AiChatException
+import io.legado.app.data.ai.AiChatMessage
+import io.legado.app.data.ai.AiContextSummary
+import io.legado.app.data.ai.AI_API_MODE_CHAT_COMPLETIONS
+import io.legado.app.data.ai.AI_API_MODE_RESPONSES
+import io.legado.app.data.ai.AiAgentMode
+import io.legado.app.data.ai.AiChatCompanionConfig
+import io.legado.app.data.ai.AiModelConfig
+import io.legado.app.data.ai.AiProviderConfig
+import io.legado.app.data.ai.AiSkillConfig
+import io.legado.app.data.ai.AiWorldBookEntry
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InterruptedIOException
@@ -243,7 +243,7 @@ object AiChatService {
     suspend fun fetchModels(provider: AiProviderConfig): List<String> {
         val baseUrl = provider.baseUrl.trim()
         require(baseUrl.isNotBlank()) { "Base URL is empty" }
-        val response = okHttpClient.newCallResponse {
+        val response = AiHttpClient.client().newCallResponse {
             url(resolveModelsUrl(baseUrl))
             addHeader("Accept", "application/json")
             provider.apiKey.trim().takeIf { it.isNotBlank() }?.let {
@@ -292,7 +292,13 @@ object AiChatService {
         onUsage: (AiUsageStats) -> Unit = {},
         agentRun: AiAgentStateStore.Run? = null,
         memoryContext: AiMemoryContext? = null,
-        agentMode: AiAgentMode = AiAgentMode.NORMAL
+        agentMode: AiAgentMode = AiAgentMode.NORMAL,
+        /**
+         * 高危工具执行前的用户确认回调。传 null 表示采用 [AiToolExecutionOptions]
+         * 默认的"始终放行"实现 —— 适合后台/批处理；接入前台 UI 的调用方
+         * （如 [io.legado.app.ui.main.ai.AiChatViewModel]）应注入弹窗实现。
+         */
+        riskConfirmation: (suspend (toolName: String, args: String, risk: AiToolRisk) -> Boolean)? = null
     ): String {
         val modelConfig = modelConfigOverride ?: AppConfig.aiCurrentModelConfig
         val provider = modelConfigOverride?.let { AppConfig.aiProviderForModel(it) }
@@ -442,7 +448,8 @@ object AiChatService {
                 extraToolNames = extraToolNames,
                 agentRun = agentRun,
                 maxToolRounds = maxToolRoundsForMode(agentMode),
-                requireGoalCompletion = agentMode == AiAgentMode.GOAL
+                requireGoalCompletion = agentMode == AiAgentMode.GOAL,
+                riskConfirmation = riskConfirmation
             ) { roundNo, roundMessages, roundTools ->
                 requestCompletionStreamWithFallback(
                     chatUrl = chatUrl,
@@ -493,7 +500,7 @@ object AiChatService {
         }
     }
 
-    private fun aiChatHttpClient(firstResponseTimeoutMillis: Long = 0L) = okHttpClient.newBuilder()
+    private fun aiChatHttpClient(firstResponseTimeoutMillis: Long = 0L) = AiHttpClient.builder()
         .connectTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(300, TimeUnit.SECONDS)
         .readTimeout(

@@ -17,7 +17,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.ActivityAiImageProviderEditBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.code.CodeEditActivity
-import io.legado.app.ui.main.ai.AiImageProviderConfig
+import io.legado.app.data.ai.AiImageProviderConfig
 import io.legado.app.ui.widget.compose.showComposeActionListDialog
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi

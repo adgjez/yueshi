@@ -1,7 +1,10 @@
-package io.legado.app.ui.main.ai
+package io.legado.app.data.ai
 
 import androidx.annotation.Keep
 import java.util.UUID
+
+const val AI_API_MODE_CHAT_COMPLETIONS = "chat_completions"
+const val AI_API_MODE_RESPONSES = "responses"
 
 @Keep
 data class AiProviderConfig(
@@ -13,9 +16,6 @@ data class AiProviderConfig(
     val apiMode: String = AI_API_MODE_CHAT_COMPLETIONS,
     val promptCache: Boolean = false
 )
-
-const val AI_API_MODE_CHAT_COMPLETIONS = "chat_completions"
-const val AI_API_MODE_RESPONSES = "responses"
 
 @Keep
 data class AiModelConfig(

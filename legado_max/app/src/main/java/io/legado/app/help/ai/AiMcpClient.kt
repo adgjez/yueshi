@@ -2,9 +2,8 @@ package io.legado.app.help.ai
 
 import io.legado.app.BuildConfig
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.postJson
-import io.legado.app.ui.main.ai.AiMcpServerConfig
+import io.legado.app.data.ai.AiMcpServerConfig
 import okhttp3.Response
 import okhttp3.ResponseBody
 import org.json.JSONArray
@@ -191,7 +190,7 @@ object AiMcpClient {
             },
             id = requestId
         )
-        val response = okHttpClient.newCallResponse {
+        val response = AiHttpClient.client().newCallResponse {
             url(server.endpoint)
             addHeader("Accept", "application/json, text/event-stream")
             addHeader("Content-Type", "application/json")
@@ -220,7 +219,7 @@ object AiMcpClient {
         session: SessionState
     ) {
         runCatching {
-            okHttpClient.newCallResponse {
+            AiHttpClient.client().newCallResponse {
                 url(server.endpoint)
                 addHeader("Accept", "application/json, text/event-stream")
                 addHeader("Content-Type", "application/json")
@@ -246,7 +245,7 @@ object AiMcpClient {
         requestId: String
     ): JSONObject {
         return runCatching {
-            okHttpClient.newCallResponse {
+            AiHttpClient.client().newCallResponse {
                 url(server.endpoint)
                 addHeader("Accept", "application/json, text/event-stream")
                 addHeader("Content-Type", "application/json")
@@ -263,7 +262,7 @@ object AiMcpClient {
             sessionMap.remove(server.id)
             toolCache.remove(server.id)
             val freshSession = ensureSession(server)
-            okHttpClient.newCallResponse {
+            AiHttpClient.client().newCallResponse {
                 url(server.endpoint)
                 addHeader("Accept", "application/json, text/event-stream")
                 addHeader("Content-Type", "application/json")

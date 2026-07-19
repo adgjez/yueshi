@@ -288,6 +288,8 @@ dependencies {
     implementation(libs.splitties.appctx)
     implementation(libs.splitties.systemservices)
     implementation(libs.splitties.views)
+
+    //AI 凭据加密存储走 AndroidKeyStore 自实现，无需 androidx.security:security-crypto。
     
     //room sql语句不高亮解决方法https://issuetracker.google.com/issues/234612964#comment6
     implementation(libs.room.runtime)

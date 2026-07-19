@@ -3,7 +3,7 @@ package io.legado.app.help.ai
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.AiMemoryFragment
 import io.legado.app.data.entities.AiMemoryItem
-import io.legado.app.ui.main.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.utils.MD5Utils
 import org.json.JSONObject
 

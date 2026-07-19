@@ -52,6 +52,11 @@ import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.BaseActivity
 import io.legado.app.data.appDb
+import io.legado.app.data.ai.AiAgentMode
+import io.legado.app.data.ai.AiChatCompanionConfig
+import io.legado.app.data.ai.AiChatSession
+import io.legado.app.data.ai.AiWorldBookBinding
+import io.legado.app.data.ai.AiWorldBookConfig
 import io.legado.app.data.entities.BookCharacter
 import io.legado.app.databinding.ActivityAiChatBinding
 import io.legado.app.databinding.DialogEditTextBinding

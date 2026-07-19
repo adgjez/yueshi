@@ -18,7 +18,7 @@ import io.legado.app.help.readaloud.speech.SpeechRoute
 import io.legado.app.help.readaloud.speech.SpeechRouteSanitizer
 import io.legado.app.help.readaloud.speech.SpeechVoiceAssigner
 import io.legado.app.ui.book.read.page.entities.TextChapter
-import io.legado.app.ui.main.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.postEvent
 import kotlinx.coroutines.CoroutineScope

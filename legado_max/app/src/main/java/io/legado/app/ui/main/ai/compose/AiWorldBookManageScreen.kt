@@ -57,9 +57,9 @@ import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.help.ai.AiWorldBookManager
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AiWorldBookBinding
-import io.legado.app.ui.main.ai.AiWorldBookConfig
-import io.legado.app.ui.main.ai.AiWorldBookEntry
+import io.legado.app.data.ai.AiWorldBookBinding
+import io.legado.app.data.ai.AiWorldBookConfig
+import io.legado.app.data.ai.AiWorldBookEntry
 import io.legado.app.ui.widget.compose.LegadoMiuixActionRow
 import io.legado.app.ui.widget.compose.LegadoMiuixCard
 import io.legado.app.ui.widget.compose.LegadoMiuixPalette
@@ -846,6 +846,9 @@ private fun WorldBookEntryEditor(
     var role by rememberSaveable { mutableStateOf(state.role) }
     var scanDepth by rememberSaveable { mutableStateOf(state.scanDepth) }
     var maxMatches by rememberSaveable { mutableStateOf(state.maxMatches) }
+    // 当用户把"常驻注入"从关闭切到开启时，先暂存待保存的 state，等弹窗确认。
+    // 避免每次保存已开启的条目都被打断；同时"从关到开"这一关键决策点必然要确认。
+    var pendingConstantSave by remember { mutableStateOf<WorldBookEntryEditState?>(null) }
     val regexOk = !regexEnabled || splitKeys(keys)
         .plus(splitKeys(secondaryKeys))
         .plus(splitKeys(excludeKeys))
@@ -941,29 +944,44 @@ private fun WorldBookEntryEditor(
                     style = style,
                     onCancel = onBack,
                     onSave = {
-                        onSave(
-                            state.copy(
-                                title = title.trim(),
-                                content = content.trim(),
-                                keys = keys,
-                                secondaryKeys = secondaryKeys,
-                                excludeKeys = excludeKeys,
-                                regexEnabled = regexEnabled,
-                                caseSensitive = caseSensitive,
-                                enabled = enabled,
-                                constant = constant,
-                                priority = priority.ifBlank { "50" },
-                                position = position.ifBlank { AiWorldBookEntry.POSITION_AFTER_SYSTEM_PROMPT },
-                                injectDepth = injectDepth.ifBlank { "4" },
-                                role = role.ifBlank { AiWorldBookEntry.ROLE_USER },
-                                scanDepth = scanDepth.ifBlank { "8" },
-                                maxMatches = maxMatches.ifBlank { "1" }
-                            )
+                        val toSave = state.copy(
+                            title = title.trim(),
+                            content = content.trim(),
+                            keys = keys,
+                            secondaryKeys = secondaryKeys,
+                            excludeKeys = excludeKeys,
+                            regexEnabled = regexEnabled,
+                            caseSensitive = caseSensitive,
+                            enabled = enabled,
+                            constant = constant,
+                            priority = priority.ifBlank { "50" },
+                            position = position.ifBlank { AiWorldBookEntry.POSITION_AFTER_SYSTEM_PROMPT },
+                            injectDepth = injectDepth.ifBlank { "4" },
+                            role = role.ifBlank { AiWorldBookEntry.ROLE_USER },
+                            scanDepth = scanDepth.ifBlank { "8" },
+                            maxMatches = maxMatches.ifBlank { "1" }
                         )
+                        // 仅在本次"从关到开"的关键决策时弹窗，已开启的
+                        // 条目保存不再打扰；用户取消即丢弃，不写入。
+                        if (toSave.constant && !state.constant) {
+                            pendingConstantSave = toSave
+                        } else {
+                            onSave(toSave)
+                        }
                     }
                 )
             }
         }
+    }
+    pendingConstantSave?.let { pending ->
+        ConstantActiveConfirmDialog(
+            style = style,
+            onConfirm = {
+                pendingConstantSave = null
+                onSave(pending)
+            },
+            onCancel = { pendingConstantSave = null }
+        )
     }
 }
 
@@ -1225,4 +1243,116 @@ private fun splitKeys(value: String): List<String> {
         .filter { it.isNotBlank() }
         .distinct()
         .take(40)
+}
+
+/**
+ * "常驻注入"开关二次确认弹窗。
+ *
+ * 当用户首次把条目从非常驻切到常驻时弹出，告知：
+ *  - 此条目每次 AI 对话都会注入（命中词匹配 + 关键词命中都会触发）
+ *  - 会持续消耗 token，影响 AI 行为
+ *  - 关闭方式：再编辑此条目并关闭"常驻注入"开关
+ *
+ * 弹窗不可外部 dismiss —— 用户必须显式选择。
+ */
+@Composable
+private fun ConstantActiveConfirmDialog(
+    style: AiComposeStyle,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = { /* 必须显式选择 */ },
+        properties = androidx.compose.ui.window.DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        )
+    ) {
+        androidx.compose.material3.Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(style.metrics.cardRadius),
+            color = style.colors.cardSurface,
+            border = androidx.compose.foundation.BorderStroke(
+                style.metrics.strokeWidth,
+                style.colors.danger
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+                Text(
+                    text = "开启常驻注入？",
+                    color = style.colors.danger,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                androidx.compose.material3.Surface(
+                    color = style.colors.danger.copy(alpha = 0.10f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(style.metrics.chipRadius),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                        Text(
+                            text = "此条目将在每次 AI 对话中作为上下文注入，而不仅在关键词命中时。",
+                            color = style.colors.primaryText,
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "· 持续消耗 token（视正文长度而定）\n" +
+                                    "· 会影响 AI 的语气、立场和事实记忆\n" +
+                                    "· 关闭方式：再次编辑本条目并关闭此开关",
+                            color = style.colors.secondaryText,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.Surface(
+                        color = style.colors.secondaryText.copy(alpha = 0.10f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            style.colors.secondaryText.copy(alpha = 0.45f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "再想想",
+                            color = style.colors.secondaryText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onCancel)
+                                .padding(vertical = 10.dp)
+                        )
+                    }
+                    androidx.compose.material3.Surface(
+                        color = style.colors.danger.copy(alpha = 0.10f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            style.colors.danger.copy(alpha = 0.45f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "确认开启",
+                            color = style.colors.danger,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onConfirm)
+                                .padding(vertical = 10.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
