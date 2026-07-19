@@ -5,7 +5,7 @@ import io.legado.app.data.entities.AiReadAloudUsageRecord
 import io.legado.app.data.entities.Book
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.book.read.page.entities.TextChapter
-import io.legado.app.ui.main.ai.AiModelConfig
+import io.legado.app.data.ai.AiModelConfig
 
 object AiReadAloudUsageRecorder {
 

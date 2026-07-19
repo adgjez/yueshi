@@ -11,7 +11,7 @@ import io.legado.app.help.readaloud.role.ReadAloudSoundEffectCandidate
 import io.legado.app.help.readaloud.role.ReadAloudSoundEffectPreprocessor
 import io.legado.app.ui.book.read.page.entities.ReadAloudCue
 import io.legado.app.ui.book.read.page.entities.TextChapter
-import io.legado.app.ui.main.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.utils.MD5Utils
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext

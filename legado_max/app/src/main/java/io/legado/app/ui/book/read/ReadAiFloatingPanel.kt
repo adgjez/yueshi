@@ -83,8 +83,8 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.ui.config.AiWorldBookManageActivity
-import io.legado.app.ui.main.ai.AiChatMessage
-import io.legado.app.ui.main.ai.AiWorldBookBinding
+import io.legado.app.data.ai.AiChatMessage
+import io.legado.app.data.ai.AiWorldBookBinding
 import io.legado.app.ui.main.ai.compose.AiComposeMarkdownText
 import io.legado.app.ui.main.ai.compose.AiComposeStyle
 import io.legado.app.ui.main.ai.compose.AiCopyTextButton

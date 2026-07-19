@@ -10,20 +10,20 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.ui.book.read.ReadAiBookHistory
-import io.legado.app.ui.main.ai.AiAgentMode
-import io.legado.app.ui.main.ai.AiChatCompanionConfig
-import io.legado.app.ui.main.ai.AiChatSession
-import io.legado.app.ui.main.ai.AiImageProviderConfig
-import io.legado.app.ui.main.ai.AiMcpServerConfig
-import io.legado.app.ui.main.ai.AiModelConfig
-import io.legado.app.ui.main.ai.AiPersonaConfig
-import io.legado.app.ui.main.ai.AiProviderConfig
-import io.legado.app.ui.main.ai.AiSkillConfig
-import io.legado.app.ui.main.ai.AiWorldBookBinding
-import io.legado.app.ui.main.ai.AiWorldBookConfig
-import io.legado.app.ui.main.ai.AiWorldBookEntry
-import io.legado.app.ui.main.ai.AI_API_MODE_CHAT_COMPLETIONS
-import io.legado.app.ui.main.ai.AI_API_MODE_RESPONSES
+import io.legado.app.data.ai.AiAgentMode
+import io.legado.app.data.ai.AiChatCompanionConfig
+import io.legado.app.data.ai.AiChatSession
+import io.legado.app.data.ai.AiImageProviderConfig
+import io.legado.app.data.ai.AiMcpServerConfig
+import io.legado.app.data.ai.AiModelConfig
+import io.legado.app.data.ai.AiPersonaConfig
+import io.legado.app.data.ai.AiProviderConfig
+import io.legado.app.data.ai.AiSkillConfig
+import io.legado.app.data.ai.AiWorldBookBinding
+import io.legado.app.data.ai.AiWorldBookConfig
+import io.legado.app.data.ai.AiWorldBookEntry
+import io.legado.app.data.ai.AI_API_MODE_CHAT_COMPLETIONS
+import io.legado.app.data.ai.AI_API_MODE_RESPONSES
 import io.legado.app.utils.GSON
 import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
 import io.legado.app.utils.fromJsonArray
@@ -1437,7 +1437,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
                             .ifBlank { AiChatCompanionConfig.DEFAULT_COMPANION_ID },
                         messages = session.messages.map { message ->
                             message.copy(
-                                kind = message.kind ?: io.legado.app.ui.main.ai.AiChatMessage.Kind.TEXT,
+                                kind = message.kind ?: io.legado.app.data.ai.AiChatMessage.Kind.TEXT,
                                 statusName = message.statusName,
                                 statusStage = message.statusStage,
                                 statusSuccess = message.statusSuccess

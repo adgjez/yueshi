@@ -3,8 +3,8 @@ package io.legado.app.help.ai
 import io.legado.app.R
 import io.legado.app.data.entities.AiAgentTrace
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AI_API_MODE_RESPONSES
-import io.legado.app.ui.main.ai.AiChatException
+import io.legado.app.data.ai.AI_API_MODE_RESPONSES
+import io.legado.app.data.ai.AiChatException
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject

@@ -7,7 +7,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.characterBookKey
 import io.legado.app.help.character.BookCharacterIdentityMigrator
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.utils.MD5Utils
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext

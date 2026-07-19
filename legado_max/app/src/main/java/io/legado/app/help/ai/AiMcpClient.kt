@@ -4,7 +4,7 @@ import io.legado.app.BuildConfig
 import io.legado.app.help.http.newCallResponse
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.postJson
-import io.legado.app.ui.main.ai.AiMcpServerConfig
+import io.legado.app.data.ai.AiMcpServerConfig
 import okhttp3.Response
 import okhttp3.ResponseBody
 import org.json.JSONArray

@@ -15,7 +15,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.newCallResponseBody
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.main.ai.AiImageProviderConfig
+import io.legado.app.data.ai.AiImageProviderConfig
 import io.legado.app.ui.widget.compose.AppManagementMenuAction
 import io.legado.app.ui.widget.compose.showComposeActionListDialog
 import io.legado.app.ui.widget.compose.showComposeConfirmDialog

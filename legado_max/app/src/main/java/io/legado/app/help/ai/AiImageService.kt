@@ -14,7 +14,7 @@ import io.legado.app.help.http.newCallResponse
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.postJson
 import io.legado.app.help.source.getShareScope
-import io.legado.app.ui.main.ai.AiImageProviderConfig
+import io.legado.app.data.ai.AiImageProviderConfig
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient

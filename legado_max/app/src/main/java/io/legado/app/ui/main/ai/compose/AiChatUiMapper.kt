@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.LruCache
 import androidx.compose.runtime.Immutable
 import io.legado.app.R
-import io.legado.app.ui.main.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatMessage
 import org.json.JSONObject
 
 @Immutable

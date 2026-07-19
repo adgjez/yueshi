@@ -8,7 +8,7 @@ import io.legado.app.data.entities.AiImageGroup
 import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
 import io.legado.app.help.http.okHttpClient
-import io.legado.app.ui.main.ai.AiImageProviderConfig
+import io.legado.app.data.ai.AiImageProviderConfig
 import io.legado.app.utils.decodeBase64DataUrlBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

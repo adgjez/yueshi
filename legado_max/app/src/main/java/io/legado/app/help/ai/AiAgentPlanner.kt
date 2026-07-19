@@ -1,6 +1,6 @@
 package io.legado.app.help.ai
 
-import io.legado.app.ui.main.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatMessage
 import org.json.JSONArray
 import org.json.JSONObject
 

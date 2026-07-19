@@ -57,9 +57,9 @@ import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.help.ai.AiWorldBookManager
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AiWorldBookBinding
-import io.legado.app.ui.main.ai.AiWorldBookConfig
-import io.legado.app.ui.main.ai.AiWorldBookEntry
+import io.legado.app.data.ai.AiWorldBookBinding
+import io.legado.app.data.ai.AiWorldBookConfig
+import io.legado.app.data.ai.AiWorldBookEntry
 import io.legado.app.ui.widget.compose.LegadoMiuixActionRow
 import io.legado.app.ui.widget.compose.LegadoMiuixCard
 import io.legado.app.ui.widget.compose.LegadoMiuixPalette

@@ -4,7 +4,7 @@ import io.legado.app.data.appDb
 import io.legado.app.help.book.characterBookKey
 import io.legado.app.help.character.BookCharacterIdentityMigrator
 import io.legado.app.model.ReadBook
-import io.legado.app.ui.main.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatMessage
 
 object AiImagePromptRewriter {
 

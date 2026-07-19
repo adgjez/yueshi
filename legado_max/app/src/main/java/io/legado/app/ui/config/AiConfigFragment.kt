@@ -20,10 +20,10 @@ import io.legado.app.ui.widget.compose.showComposeMultiChoiceDialog
 import io.legado.app.ui.widget.compose.showComposeNumberPickerDialog
 import io.legado.app.ui.widget.compose.showComposeTextInputDialog
 import io.legado.app.ui.widget.compose.showComposeTextFormDialogWithChecks
-import io.legado.app.ui.main.ai.AiModelConfig
-import io.legado.app.ui.main.ai.AiMcpServerConfig
+import io.legado.app.data.ai.AiModelConfig
+import io.legado.app.data.ai.AiMcpServerConfig
 import io.legado.app.ui.main.ai.AiImageGalleryActivity
-import io.legado.app.ui.main.ai.AiSkillConfig
+import io.legado.app.data.ai.AiSkillConfig
 import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent

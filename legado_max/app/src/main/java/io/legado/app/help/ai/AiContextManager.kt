@@ -1,8 +1,8 @@
 package io.legado.app.help.ai
 
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.main.ai.AiChatMessage
-import io.legado.app.ui.main.ai.AiContextSummary
+import io.legado.app.data.ai.AiChatMessage
+import io.legado.app.data.ai.AiContextSummary
 
 object AiContextManager {
     private const val CHARS_PER_TOKEN = 3

@@ -1,4 +1,4 @@
-package io.legado.app.ui.main.ai
+package io.legado.app.data.ai
 
 import androidx.annotation.Keep
 import java.util.UUID

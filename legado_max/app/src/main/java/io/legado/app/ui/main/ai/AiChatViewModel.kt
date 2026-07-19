@@ -4,6 +4,12 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import io.legado.app.R
 import io.legado.app.constant.AppLog
+import io.legado.app.data.ai.AiAgentMode
+import io.legado.app.data.ai.AiChatCompanionConfig
+import io.legado.app.data.ai.AiChatException
+import io.legado.app.data.ai.AiChatMessage
+import io.legado.app.data.ai.AiChatSession
+import io.legado.app.data.ai.AiContextSummary
 import io.legado.app.data.entities.AiAgentJob
 import io.legado.app.data.entities.AiAgentSession
 import io.legado.app.data.entities.AiMemoryItem
@@ -959,7 +965,7 @@ class AiChatViewModel : ViewModel() {
         return AppConfig.aiSkillList.filter { it.id in windowSkillIds && it.enabled }
     }
 
-    fun saveContextSummary(sessionId: String, summary: io.legado.app.ui.main.ai.AiContextSummary) {
+    fun saveContextSummary(sessionId: String, summary: io.legado.app.data.ai.AiContextSummary) {
         if (!AppConfig.aiContextCompressionEnabled || !summary.isValid) return
         AppConfig.aiChatSessionList = AppConfig.aiChatSessionList.map { session ->
             if (session.id == sessionId && session.companionId == currentCompanionId) {
