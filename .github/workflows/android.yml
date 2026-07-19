@@ -38,7 +38,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-          gradle-home-cache-cleanup: true
 
       # 单一 Gradle 调用：单次 daemon 内完成 assemble，KSP/Kotlin 增量复用。
       # 仅打包 arm64-v8a：减少 dex 合并和 native lib 打包时间。
