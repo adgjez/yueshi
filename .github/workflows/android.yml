@@ -27,8 +27,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -36,76 +34,23 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install AAPT2 runtime dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libc6-i386 lib32stdc++6 lib32z1 libncurses6 libtinfo6
-
-      - name: Grant gradlew permission
-        run: chmod +x gradlew
-
-      - name: Use official Gradle distribution URL (CI runs outside China)
-        run: |
-          sed -i 's|https\\://mirrors.cloud.tencent.com/gradle/|https\\://services.gradle.org/distributions/|' gradle/wrapper/gradle-wrapper.properties
-          cat gradle/wrapper/gradle-wrapper.properties | grep distributionUrl
-
-      - name: Configure Gradle for CI (memory, parallel, build cache)
-        run: |
-          # Kotlin compiler runs in its own daemon; give it dedicated heap.
-          # Enable Gradle parallel + build cache for incremental builds.
-          {
-            echo ""
-            echo "# ---- CI-only tuning ----"
-            echo "kotlin.daemon.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
-            echo "kotlin.daemon.useFallbackStrategy=true"
-            echo "org.gradle.jvmargs=-XX:+UseParallelGC -Xmx4g -Xms512m -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
-            echo "org.gradle.parallel=true"
-            echo "org.gradle.caching=true"
-            echo "org.gradle.configuration-cache=false"
-            echo "org.gradle.daemon=true"
-          } >> gradle.properties
-          echo "---- gradle.properties (tail) ----"
-          tail -n 12 gradle.properties
-
-      - name: Cache Gradle
-        uses: actions/cache@v6
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('legado_max/**/*.gradle*', 'legado_max/gradle/libs.versions.toml', 'legado_max/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          gradle-home-cache-cleanup: true
 
-      # 合并为一次 Gradle 调用：直接 assemble，让同一 daemon 内增量复用 KSP/Kotlin 编译结果，
-      # 避免原先两步 --no-daemon 导致的重复编译（节省约 3-4 分钟）。
-      # 不使用 --no-daemon：daemon 内可复用配置缓存与 JIT 预热。
-      # 不设置 JAVA_TOOL_OPTIONS：避免与 kotlin.daemon.jvmargs=-Xmx3g 冲突。
+      # 单一 Gradle 调用：单次 daemon 内完成 assemble，KSP/Kotlin 增量复用。
+      # 仅打包 arm64-v8a：减少 dex 合并和 native lib 打包时间。
       - name: Assemble Debug APK
-        env:
-          GRADLE_OPTS: >-
-            -Dorg.gradle.workers.max=2
         run: |
-          VERSION_CODE=$(($(date -u +%s) / 60))
+          chmod +x gradlew
           ./gradlew :app:assembleAppMaxDebug \
             -Pabi=arm64-v8a \
-            -PVERSION_CODE="$VERSION_CODE" \
-            --max-workers=2 \
+            -PVERSION_CODE="$(($(date -u +%s) / 60))" \
             --stacktrace
 
-      - name: Resolve APK
-        id: apk
-        run: |
-          APK_PATH=$(find app/build/outputs/apk -type f -name '*.apk' | head -n 1)
-          if [ -z "$APK_PATH" ]; then
-            echo "No APK found."
-            exit 1
-          fi
-          APK_NAME=$(basename "$APK_PATH")
-          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
-          echo "name=$APK_NAME" >> "$GITHUB_OUTPUT"
-          echo "Found APK: $APK_NAME"
-
-      - name: Upload APK artifact
+      - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v7
         with:

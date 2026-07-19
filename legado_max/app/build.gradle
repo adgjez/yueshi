@@ -79,6 +79,15 @@ android {
         buildConfigField "String", "Cronet_Version", "\"$CronetVersion\""
         buildConfigField "String", "Cronet_Main_Version", "\"$CronetMainVersion\""
 
+        // 支持 -Pabi=arm64-v8a 限制打包的 ABI，减少 APK 体积和构建时间。
+        // 未指定 -Pabi 时打包全部 ABI（保持原行为，本地开发不受影响）。
+        def abiFilter = project.findProperty("abi")
+        if (abiFilter != null) {
+            ndk {
+                abiFilter.toString().split(',').collect { it.trim() }.each { abiFilters it }
+            }
+        }
+
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments += [
