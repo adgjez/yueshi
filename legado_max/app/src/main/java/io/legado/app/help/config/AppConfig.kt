@@ -22,6 +22,8 @@ import io.legado.app.data.ai.AiSkillConfig
 import io.legado.app.data.ai.AiWorldBookBinding
 import io.legado.app.data.ai.AiWorldBookConfig
 import io.legado.app.data.ai.AiWorldBookEntry
+import io.legado.app.help.ai.AiCredentialKeys
+import io.legado.app.help.ai.AiCredentialStore
 import io.legado.app.data.ai.AI_API_MODE_CHAT_COMPLETIONS
 import io.legado.app.data.ai.AI_API_MODE_RESPONSES
 import io.legado.app.utils.GSON
@@ -1749,11 +1751,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = normalizeAiImageProviders(
             GSON.fromJsonArray<AiImageProviderConfig>(appCtx.getPrefString(PreferKey.aiImageProviderList))
                 .getOrDefault(emptyList())
-        )
+        ).hydrateImageApiKeys(AiCredentialKeys::imageApiKey)
         set(value) {
             val providers = normalizeAiImageProviders(value)
-            if (providers.isEmpty()) appCtx.removePref(PreferKey.aiImageProviderList)
-            else appCtx.putPrefString(PreferKey.aiImageProviderList, GSON.toJson(providers))
+            val stored = providers.persistImageApiKeys(AiCredentialKeys::imageApiKey)
+            if (stored.isEmpty()) appCtx.removePref(PreferKey.aiImageProviderList)
+            else appCtx.putPrefString(PreferKey.aiImageProviderList, GSON.toJson(stored))
             syncAiImageState(providers)
         }
 
@@ -2091,11 +2094,29 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         set(value) = appCtx.putPrefInt(PreferKey.aiAgentToolRetryBackoffMillis, value.coerceIn(0, 5_000))
 
     var aiTavilyApiKey: String
-        get() = appCtx.getPrefString(PreferKey.aiTavilyApiKey).orEmpty()
+        get() {
+            // 缓存命中直接读；未命中（首次启动）回退到旧明文 pref 并异步迁移到加密存储。
+            val cached = AiCredentialStore.peekCached(io.legado.app.help.ai.AiCredentialKeys.tavilyApiKey())
+            if (cached != null) return cached
+            val legacy = appCtx.getPrefString(PreferKey.aiTavilyApiKey).orEmpty()
+            if (legacy.isNotBlank()) {
+                // 把旧明文迁到加密存储；后续读都走 store。
+                AiCredentialStore.putSync(
+                    io.legado.app.help.ai.AiCredentialKeys.tavilyApiKey(),
+                    legacy
+                )
+                appCtx.removePref(PreferKey.aiTavilyApiKey)
+                return legacy
+            }
+            return ""
+        }
         set(value) {
             val key = value.trim()
+            AiCredentialStore.putSync(
+                io.legado.app.help.ai.AiCredentialKeys.tavilyApiKey(),
+                key
+            )
             if (key.isBlank()) appCtx.removePref(PreferKey.aiTavilyApiKey)
-            else appCtx.putPrefString(PreferKey.aiTavilyApiKey, key)
         }
 
     var aiTavilyBaseUrl: String
@@ -2176,10 +2197,11 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     }
 
     private fun persistAiProviders(providers: List<AiProviderConfig>) {
-        if (providers.isEmpty()) {
+        val stored = providers.persistProviderApiKeys(AiCredentialKeys::providerApiKey)
+        if (stored.isEmpty()) {
             appCtx.removePref(PreferKey.aiProviderList)
         } else {
-            appCtx.putPrefString(PreferKey.aiProviderList, GSON.toJson(providers))
+            appCtx.putPrefString(PreferKey.aiProviderList, GSON.toJson(stored))
         }
     }
 
@@ -2261,10 +2283,11 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     }
 
     private fun persistAiMcpServers(servers: List<AiMcpServerConfig>) {
-        if (servers.isEmpty()) {
+        val stored = servers.persistMcpApiKeys(AiCredentialKeys::mcpApiKey)
+        if (stored.isEmpty()) {
             appCtx.removePref(PreferKey.aiMcpServerList)
         } else {
-            appCtx.putPrefString(PreferKey.aiMcpServerList, GSON.toJson(servers))
+            appCtx.putPrefString(PreferKey.aiMcpServerList, GSON.toJson(stored))
         }
     }
 

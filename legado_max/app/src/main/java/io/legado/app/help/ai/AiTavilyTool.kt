@@ -3,7 +3,6 @@ package io.legado.app.help.ai
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.postJson
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
@@ -95,7 +94,7 @@ object AiTavilyTool {
             appendStringArray(this, "include_domains", arguments?.optJSONArray("includeDomains"))
             appendStringArray(this, "exclude_domains", arguments?.optJSONArray("excludeDomains"))
         }
-        val response = okHttpClient.newCallResponse {
+        val response = AiHttpClient.client().newCallResponse {
             url(normalizeUrl(AppConfig.aiTavilyBaseUrl))
             addHeader("Accept", "application/json")
             addHeader("Authorization", "Bearer ${AppConfig.aiTavilyApiKey}")

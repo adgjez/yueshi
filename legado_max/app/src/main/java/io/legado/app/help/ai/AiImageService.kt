@@ -11,7 +11,6 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.CookieStore
 import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.postJson
 import io.legado.app.help.source.getShareScope
 import io.legado.app.data.ai.AiImageProviderConfig
@@ -294,7 +293,7 @@ object AiImageService {
 
     private fun AiImageProviderConfig.httpClient(): OkHttpClient {
         val timeout = validTimeout()
-        return okHttpClient.newBuilder()
+        return AiHttpClient.builder()
             .connectTimeout(timeout, TimeUnit.MILLISECONDS)
             .writeTimeout(timeout, TimeUnit.MILLISECONDS)
             .readTimeout(timeout, TimeUnit.MILLISECONDS)

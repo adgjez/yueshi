@@ -8,8 +8,8 @@ import io.legado.app.help.character.BookCharacterProfileMeta
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.postJson
+import io.legado.app.help.ai.AiHttpClient
 import io.legado.app.data.ai.AiChatException
 import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.data.ai.AiContextSummary
@@ -243,7 +243,7 @@ object AiChatService {
     suspend fun fetchModels(provider: AiProviderConfig): List<String> {
         val baseUrl = provider.baseUrl.trim()
         require(baseUrl.isNotBlank()) { "Base URL is empty" }
-        val response = okHttpClient.newCallResponse {
+        val response = AiHttpClient.client().newCallResponse {
             url(resolveModelsUrl(baseUrl))
             addHeader("Accept", "application/json")
             provider.apiKey.trim().takeIf { it.isNotBlank() }?.let {
@@ -500,7 +500,7 @@ object AiChatService {
         }
     }
 
-    private fun aiChatHttpClient(firstResponseTimeoutMillis: Long = 0L) = okHttpClient.newBuilder()
+    private fun aiChatHttpClient(firstResponseTimeoutMillis: Long = 0L) = AiHttpClient.builder()
         .connectTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(300, TimeUnit.SECONDS)
         .readTimeout(

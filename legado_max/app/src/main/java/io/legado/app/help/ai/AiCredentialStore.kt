@@ -91,6 +91,50 @@ object AiCredentialStore {
     }
 
     /**
+     * 同步应用语义：立刻更新内存缓存，并切到 IO 把同一份写入加密存储。
+     * 写入失败时仅记录异常 —— 下次冷启动会重新从存储读。
+     *
+     * 给 UI（设置页）使用；不要在热路径调用。
+     */
+    fun putSync(key: String, value: String) {
+        val effective = value
+        if (effective.isEmpty()) {
+            removeSync(key)
+            return
+        }
+        // 1) 立即更新缓存
+        cacheMap()[key] = effective
+        // 2) 异步落盘
+        val payload = runCatching { encrypt(effective) }.getOrNull() ?: return
+        // 不在这里直接 launch：用 helper 方法交给对象内的 scope。
+        putAsync(key, payload)
+    }
+
+    private fun putAsync(key: String, payload: String) {
+        kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                store().edit().putString(encodeKey(key), payload).apply()
+            } catch (t: Throwable) {
+                // best effort
+            }
+        }
+    }
+
+    /**
+     * 同步删除：清缓存 + 异步清存储。
+     */
+    fun removeSync(key: String) {
+        cacheMap().remove(key)
+        kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                store().edit().remove(encodeKey(key)).apply()
+            } catch (t: Throwable) {
+                // best effort
+            }
+        }
+    }
+
+    /**
      * 写入一个 key -> 凭据。value 为空时等价于 [remove]。
      */
     suspend fun put(key: String, value: String) {
