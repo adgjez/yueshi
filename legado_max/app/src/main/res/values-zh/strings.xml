@@ -2101,6 +2101,8 @@
     <!-- AI 相关字符串 -->
     <string name="ai_task_channel_name">AI 任务</string>
     <string name="ai_summary">AI 章节总结</string>
+    <string name="read_assistant">阅读助手</string>
+    <string name="book_characters">角色</string>
     <string name="ask_ai">问 AI</string>
     <string name="ai_reply">AI 回复</string>
     <string name="ai_not_enabled">AI 助手未启用</string>

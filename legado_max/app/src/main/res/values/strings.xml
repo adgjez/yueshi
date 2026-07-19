@@ -1404,6 +1404,8 @@
     <string name="bookshelf_px_5">Sort by author</string>
     <string name="effective_replaces">Effective replacement</string>
     <string name="ai_summary">AI Chapter Summary</string>
+    <string name="read_assistant">Read Assistant</string>
+    <string name="book_characters">Characters</string>
     <string name="export_book">Export Book</string>
     <string name="export_book_notification_content">Exporting (%1$s), with %2$d to be exported.</string>
     <string name="export_md">Export(MD)</string>

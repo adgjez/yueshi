@@ -75,6 +75,7 @@ import io.legado.app.receiver.TimeBatteryReceiver
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.book.bookmark.BookmarkDialog
+import io.legado.app.ui.book.character.BookCharacterManageActivity
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
 import io.legado.app.ui.book.changesource.ChangeChapterSourceDialog
 import io.legado.app.ui.book.info.BookInfoActivity
@@ -1090,6 +1091,17 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun openReadAssistant() {
         openReadAiPanel("")
+    }
+
+    override fun openBookCharacters() {
+        val bookUrl = ReadBook.book?.bookUrl
+        if (bookUrl.isNullOrBlank()) {
+            toastOnUi(R.string.book_name)
+            return
+        }
+        startActivity<BookCharacterManageActivity> {
+            putExtra(BookCharacterManageActivity.EXTRA_BOOK_URL, bookUrl)
+        }
     }
 
     override fun openReadAiSummary() {

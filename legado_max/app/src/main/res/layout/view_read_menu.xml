@@ -151,14 +151,15 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp">
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabSearch"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
+                android:layout_weight="1"
                 android:contentDescription="@string/search_content"
                 android:src="@drawable/ic_search"
                 android:tint="@color/primaryText"
@@ -169,16 +170,12 @@
                 app:pressedTranslationZ="2dp"
                 tools:ignore="UnusedAttribute" />
 
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabAutoPage"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
+                android:layout_weight="1"
                 android:contentDescription="@string/auto_next_page"
                 android:src="@drawable/ic_auto_page"
                 android:tint="@color/primaryText"
@@ -189,16 +186,12 @@
                 app:pressedTranslationZ="2dp"
                 tools:ignore="UnusedAttribute" />
 
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabReplaceRule"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
+                android:layout_weight="1"
                 android:contentDescription="@string/replace_rule_title"
                 android:src="@drawable/ic_find_replace"
                 android:tint="@color/primaryText"
@@ -209,20 +202,64 @@
                 app:pressedTranslationZ="2dp"
                 tools:ignore="UnusedAttribute" />
 
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabNightTheme"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
+                android:layout_margin="4dp"
+                android:layout_weight="1"
                 android:contentDescription="@string/dark_theme"
                 android:src="@drawable/ic_brightness"
                 android:tint="@color/primaryText"
                 android:tooltipText="@string/dark_theme"
+                app:backgroundTint="@color/background_menu"
+                app:elevation="2dp"
+                app:fabSize="mini"
+                app:pressedTranslationZ="2dp"
+                tools:ignore="UnusedAttribute" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabAiSummary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/ai_summary"
+                android:src="@drawable/ic_magic_star"
+                android:tint="@color/primaryText"
+                android:tooltipText="@string/ai_summary"
+                app:backgroundTint="@color/background_menu"
+                app:elevation="2dp"
+                app:fabSize="mini"
+                app:pressedTranslationZ="2dp"
+                tools:ignore="UnusedAttribute" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabReadAssistant"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/read_assistant"
+                android:src="@drawable/ic_bottom_ai_assistant"
+                android:tint="@color/primaryText"
+                android:tooltipText="@string/read_assistant"
+                app:backgroundTint="@color/background_menu"
+                app:elevation="2dp"
+                app:fabSize="mini"
+                app:pressedTranslationZ="2dp"
+                tools:ignore="UnusedAttribute" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabCharacters"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/book_characters"
+                android:src="@drawable/ic_groups"
+                android:tint="@color/primaryText"
+                android:tooltipText="@string/book_characters"
                 app:backgroundTint="@color/background_menu"
                 app:elevation="2dp"
                 app:fabSize="mini"
