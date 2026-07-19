@@ -115,6 +115,14 @@ interface AiMemoryDao {
     @Query("DELETE FROM ai_memory_items WHERE memoryId = :memoryId")
     fun deleteItem(memoryId: String)
 
+    @Query(
+        """
+        SELECT EXISTS(SELECT 1 FROM ai_memory_items
+        WHERE fingerprint = :fingerprint AND fingerprint != '' LIMIT 1)
+        """
+    )
+    fun itemExistsByFingerprint(fingerprint: String): Boolean
+
     @Query("DELETE FROM ai_memory_fragments WHERE fragmentId = :fragmentId")
     fun deleteFragment(fragmentId: String)
 

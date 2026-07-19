@@ -59,6 +59,13 @@ object AiMemoryStore {
 
     fun upsertItem(item: AiMemoryItem) {
         val saving = item.withFingerprint()
+        if (saving.fingerprint.isNotBlank()
+            && appDb.aiMemoryDao.itemExistsByFingerprint(saving.fingerprint)
+        ) {
+            // 同一 (scope/bookKey/sessionId/type/subject/predicate/objectValue/content)
+            // 组合已存在，不重复插入；同一次会话内的"完全相同偏好复述"走这里静默跳过。
+            return
+        }
         appDb.aiMemoryDao.upsertItem(saving)
         appDb.aiMemoryDao.deleteItemFts(saving.memoryId)
         appDb.aiMemoryDao.upsertItemFts(
@@ -144,7 +151,7 @@ object AiMemoryRetriever {
     }
 
     private fun buildFtsQuery(text: String): String {
-        return Regex("[A-Za-z0-9_]{2,}")
+        return Regex("[\\p{L}\\p{N}_]{2,}")
             .findAll(text)
             .map { it.value.lowercase() }
             .distinct()
