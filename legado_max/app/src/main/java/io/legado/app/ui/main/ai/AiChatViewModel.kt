@@ -801,8 +801,19 @@ class AiChatViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
+        // 取消本实例的瞬时发布 job：它在静态 requestScope 上运行，
+        // 不显式取消就会在 ViewModel 销毁后继续向已死的 LiveData postValue。
+        pendingTransientPublishJob?.cancel()
+        pendingTransientPublishJob = null
         if (activeViewModel === this) {
+            // 本 ViewModel 是当前请求的 owner；ViewModel 销毁意味着宿主 Activity
+            // 已真正结束（onCleared 在非配置变更销毁时才会触发），
+            // 静态 activeJob 在没有新 ViewModel 接替的情况下继续跑只会浪费
+            // 资源并向已死的 LiveData / stateFlow 投递结果。
             activeViewModel = null
+            activeJob?.cancel()
+            activeJob = null
+            activeAgentRun = null
         }
     }
 
