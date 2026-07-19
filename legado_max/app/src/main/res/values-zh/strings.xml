@@ -2112,9 +2112,6 @@
     <string name="ai_enable">启用 AI</string>
     <string name="ai_enable_summary">开启后长按搜索键打开 AI</string>
     <string name="ai_enable_summary_disabled">当前提供商下有模型时才能开启</string>
-    <string name="ai_system_prompt">系统提示词</string>
-    <string name="ai_system_prompt_summary">设置 AI 的身份、工具调用规则和回答风格</string>
-    <string name="ai_system_prompt_hint">输入系统提示词</string>
     <string name="ai_provider">提供商</string>
     <string name="ai_current_provider">当前提供商</string>
     <string name="ai_current_provider_summary_empty">请先添加提供商</string>
