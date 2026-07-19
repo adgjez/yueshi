@@ -78,7 +78,7 @@ object AiCredentialMigrator {
         if (list.isEmpty()) return
         var mutated = false
         val rewritten = list.map { cfg ->
-            val id = extractId(cfg) ?: return@map cfg
+            val id = extractId(cfg as Any) ?: return@map cfg
             val embedded = takeApiKey(cfg)
             val storeKey = credentialKeyFor(id)
             val cached = AiCredentialStore.peekCached(storeKey)
