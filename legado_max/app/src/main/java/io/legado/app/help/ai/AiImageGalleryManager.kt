@@ -7,7 +7,6 @@ import io.legado.app.data.entities.AiGeneratedImage
 import io.legado.app.data.entities.AiImageGroup
 import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.data.ai.AiImageProviderConfig
 import io.legado.app.utils.decodeBase64DataUrlBytes
 import kotlinx.coroutines.Dispatchers
@@ -341,7 +340,7 @@ object AiImageGalleryManager {
 
     private fun AiImageProviderConfig.imageDownloadClient(): OkHttpClient {
         val timeout = validTimeout()
-        return okHttpClient.newBuilder()
+        return AiHttpClient.builder()
             .connectTimeout(timeout, TimeUnit.MILLISECONDS)
             .writeTimeout(timeout, TimeUnit.MILLISECONDS)
             .readTimeout(timeout, TimeUnit.MILLISECONDS)

@@ -809,7 +809,7 @@ class AiConfigFragment : ComposeSettingFragment() {
                     var lastError = ""
                     defaultSkillUrls.forEach { skillUrl ->
                         try {
-                            okHttpClient.newCallResponse {
+                            AiHttpClient.client().newCallResponse {
                                 url(skillUrl)
                             }.use { response ->
                                 if (response.isSuccessful) {
