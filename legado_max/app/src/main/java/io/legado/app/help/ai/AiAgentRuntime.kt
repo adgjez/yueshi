@@ -571,8 +571,4 @@ internal object AiAgentRuntime {
             true
         }
     }
-
-    private fun StringBuilder.toSafeDebugLog(): String {
-        return AiChatService.safeDebugLog(toString())
-    }
 }

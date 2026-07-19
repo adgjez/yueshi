@@ -112,6 +112,7 @@ object AiToolRegistry {
     )
 
     val readSafeToolNames = setOf(
+        "load_ai_skill",
         "query_bookshelf",
         "get_bookshelf_book_info",
         "list_book_chapters",
