@@ -830,9 +830,6 @@ class AiConfigFragment : ComposeSettingFragment() {
                         try {
                             okHttpClient.newCallResponse {
                                 url(skillUrl)
-                                get()
-                                connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                                readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
                             }.use { response ->
                                 if (response.isSuccessful) {
                                     val body = response.body.string()
