@@ -262,6 +262,9 @@ fun AiChatRoute(
     val autoSpeakEnabled = remember(refreshToken) { AppConfig.aiChatAutoSpeakEnabled }
     val thinkingToolbarEnabled = remember(refreshToken) { AppConfig.aiThinkingToolbarEnabled }
     val enterToSend = remember(refreshToken) { AppConfig.aiEnterToSend }
+    val pendingRiskConfirm by viewModel.pendingRiskConfirm.collectAsState()
+    val context = LocalContext.current
+    val confirmStyle = aiComposeStyle(context)
     AiChatScreen(
         messages = messages,
         requesting = requesting,
@@ -279,6 +282,15 @@ fun AiChatRoute(
         compactHeader = compactHeader,
         actions = actions
     )
+    pendingRiskConfirm?.let { request ->
+        AiToolRiskConfirmDialog(
+            toolName = request.toolName,
+            args = request.args,
+            risk = request.risk,
+            style = confirmStyle,
+            onResolve = { allowed -> viewModel.resolveToolRiskConfirm(allowed) }
+        )
+    }
 }
 
 @Composable

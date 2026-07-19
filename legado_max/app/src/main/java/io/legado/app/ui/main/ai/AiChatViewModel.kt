@@ -20,6 +20,7 @@ import io.legado.app.help.ai.AiChatService
 import io.legado.app.help.ai.AiMemoryContext
 import io.legado.app.help.ai.AiTaskKeepAlive
 import io.legado.app.help.ai.AiToolRegistry
+import io.legado.app.help.ai.AiToolRisk
 import io.legado.app.help.config.AppConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +28,12 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import org.json.JSONObject
 import splitties.init.appCtx
 import java.util.UUID
@@ -77,6 +83,51 @@ class AiChatViewModel : ViewModel() {
         val variantGroupId: String,
         val variantIndex: Int
     )
+
+    /**
+     * 当前等待用户确认的高危工具请求。`null` 表示没有等待中的弹窗。
+     * 暴露给 Composable 后由 [AiToolRiskConfirmDialog] 观察并渲染。
+     */
+    data class PendingRiskConfirm(
+        val toolName: String,
+        val args: String,
+        val risk: AiToolRisk,
+        val continuation: kotlinx.coroutines.CancellableContinuation<Boolean>
+    )
+
+    private val _pendingRiskConfirm = MutableStateFlow<PendingRiskConfirm?>(null)
+
+    val pendingRiskConfirm: StateFlow<PendingRiskConfirm?> = _pendingRiskConfirm.asStateFlow()
+
+    /**
+     * 在执行 [toolName] 前由 [AiChatService] 回调。挂起直到用户在弹窗中
+     * 做出选择，或本 ViewModel 因 Activity 退出而被取消。
+     */
+    suspend fun awaitToolRiskConfirmation(
+        toolName: String,
+        args: String,
+        risk: AiToolRisk
+    ): Boolean {
+        return suspendCancellableCoroutine { continuation ->
+            val request = PendingRiskConfirm(toolName, args, risk, continuation)
+            // 如果 ViewModel 被清理（页面退出），自动拒绝以避免请求被永久挂起
+            continuation.invokeOnCancellation {
+                _pendingRiskConfirm.compareAndSet(request, null)
+            }
+            _pendingRiskConfirm.value = request
+        }
+    }
+
+    /**
+     * Composable 端用户点击"允许"/"拒绝"后调用。恢复被挂起的工具执行。
+     */
+    fun resolveToolRiskConfirm(allowed: Boolean) {
+        val state = _pendingRiskConfirm.value ?: return
+        _pendingRiskConfirm.value = null
+        if (state.continuation.isActive) {
+            state.continuation.resume(allowed)
+        }
+    }
 
     init {
         restoreCurrentSession()
@@ -218,7 +269,10 @@ class AiChatViewModel : ViewModel() {
                         ),
                         activeSkills = activeSkills,
                         extraTools = companionExtraTools + AiToolRegistry.resolveMcpTools(activeMcpServerIds),
-                        agentMode = requestAgentMode
+                        agentMode = requestAgentMode,
+                        riskConfirmation = { toolName, args, risk ->
+                            awaitToolRiskConfirmation(toolName, args, risk)
+                        }
                     )
                 }
                 targetFor(requestSessionId, requestCompanionId).setRequesting(false)
