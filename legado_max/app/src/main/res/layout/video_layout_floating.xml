@@ -64,4 +64,15 @@
         android:max="100"
         android:progressDrawable="@drawable/video_progress" />
 
+    <ImageView
+        android:id="@+id/resizeHandle"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:padding="4dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_resize"
+        android:contentDescription="@string/adjust" />
+
 </RelativeLayout>
