@@ -669,7 +669,10 @@ class AiChatViewModel : ViewModel() {
         if (isRequesting || activeJob?.isActive == true) return false
         val index = messages.indexOfFirst { it.id == messageId }
         if (index < 0) return false
-        messages.subList(index, messages.size).clear()
+        // CopyOnWriteArrayList.subList() 返回只读视图，不支持 clear()，
+        // 改用 removeAll(toList()) 完成尾部截断。
+        val toRemove = messages.subList(index, messages.size).toList()
+        messages.removeAll(toRemove)
         clearCurrentSessionSummary()
         publish()
         return true
@@ -713,7 +716,9 @@ class AiChatViewModel : ViewModel() {
             messages.size
         }
         if (assistantEndExclusive < messages.size) {
-            messages.subList(assistantEndExclusive, messages.size).clear()
+            // CopyOnWriteArrayList.subList() 不支持 clear()，用 removeAll(toList())。
+            val toRemove = messages.subList(assistantEndExclusive, messages.size).toList()
+            messages.removeAll(toRemove)
         }
         val range = userIndex + 1 until assistantEndExclusive
         val existingGroupId = messages.getOrNull(targetIndex)?.variantGroupId
