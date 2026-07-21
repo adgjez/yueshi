@@ -4,12 +4,37 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.AiAgentJob
 import io.legado.app.data.entities.AiAgentSession
 import io.legado.app.data.entities.AiAgentTrace
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.UUID
 
 object AiAgentStateStore {
 
     private const val DEFAULT_LEASE_MILLIS = 10 * 60 * 1000L
+    private const val EXPIRY_SWEEP_INTERVAL_MILLIS = 60_000L
+
+    /**
+     * 进程级维护协程：定期把 lease 过期但仍标记 RUNNING 的 job 转为 WAITING_RESUME。
+     *
+     * 替代此前在 [activeJobs] / [startRun] 入口的同步调用，避免每次读活跃任务都触发
+     * DB 查询。`startRun` 仍保留一次同步 sweep 以保证新 run 启动前状态干净。
+     * scope 随 object 单例生命周期常驻，进程退出即销毁。
+     */
+    private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        maintenanceScope.launch {
+            while (isActive) {
+                delay(EXPIRY_SWEEP_INTERVAL_MILLIS)
+                runCatching { markExpiredRunningJobs() }
+            }
+        }
+    }
 
     data class Run(
         val sessionId: String,
@@ -211,7 +236,6 @@ object AiAgentStateStore {
     }
 
     fun activeJobs(): List<AiAgentJob> {
-        markExpiredRunningJobs()
         return appDb.aiAgentDao.activeJobs()
     }
 
