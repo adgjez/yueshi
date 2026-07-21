@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,7 +77,10 @@ class AiChatViewModel : ViewModel() {
         private var activeVariantGroupId: String? = null
         private var activeVariantIndex: Int = 0
         private var activeAgentRun: AiAgentStateStore.Run? = null
-        private val activeToolMessageIds = linkedMapOf<String, String>()
+        // requestScope 协程（upsertToolEvent 写）与主线程（stopRequest -> finishActiveTools
+        // 也会触发清理/遍历）并发访问，用 ConcurrentHashMap 避免结构性 race。
+        // 顺序对本场景不影响（每个 value 独立处理），不需要 LinkedHashMap 保序。
+        private val activeToolMessageIds = ConcurrentHashMap<String, String>()
         private val dataImageRegex = Regex("data:image/[^\\s\"')]+")
         private const val MAX_STORED_TEXT_CHARS = 20_000
         private const val MAX_STORED_STATUS_CHARS = 4_000

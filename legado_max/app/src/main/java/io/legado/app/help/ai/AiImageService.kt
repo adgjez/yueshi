@@ -309,7 +309,9 @@ object AiImageService {
 
     private fun AiImageProviderConfig.httpClient(): OkHttpClient {
         val timeout = validTimeout()
-        return AiHttpClient.builder()
+        // 在共享单例 client 的连接池/线程池基础上派生新 client，避免每次生成都新建
+        // 独立 ConnectionPool 造成 socket fd 泄漏。timeout 字段独立，覆盖不影响原 client。
+        return AiHttpClient.client().newBuilder()
             .connectTimeout(timeout, TimeUnit.MILLISECONDS)
             .writeTimeout(timeout, TimeUnit.MILLISECONDS)
             .readTimeout(timeout, TimeUnit.MILLISECONDS)
