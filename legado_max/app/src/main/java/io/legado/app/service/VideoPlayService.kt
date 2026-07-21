@@ -531,19 +531,20 @@ class VideoPlayService : BaseService() {
                     val screenHeight = resources.displayMetrics.heightPixels
                     val minWidth = (screenWidth * 0.3f).toInt()
                     val maxWidth = screenWidth
+                    val maxHeight = (screenHeight * 0.85f).toInt()
                     var newWidth = (initialWidth + deltaX).toInt()
                     if (newWidth < minWidth) newWidth = minWidth
                     if (newWidth > maxWidth) newWidth = maxWidth
-                    val newHeight = if (aspectRatio > 0) {
-                        (newWidth * aspectRatio).toInt()
-                    } else {
-                        (newWidth * 9f / 16f).toInt()
+                    val ratio = if (aspectRatio > 0) aspectRatio else 9f / 16f
+                    var newHeight = (newWidth * ratio).toInt()
+                    // 若高度超限，按高度反推宽度，保持视频宽高比不被压扁
+                    if (newHeight > maxHeight) {
+                        newHeight = maxHeight
+                        newWidth = (newHeight / ratio).toInt()
                     }
-                    val maxHeight = (screenHeight * 0.85f).toInt()
-                    val clampedHeight = if (newHeight > maxHeight) maxHeight else newHeight
-                    if (params.width != newWidth || params.height != clampedHeight) {
+                    if (params.width != newWidth || params.height != newHeight) {
                         params.width = newWidth
-                        params.height = clampedHeight
+                        params.height = newHeight
                         windowManager.updateViewLayout(floatingView, params)
                     }
                 }
