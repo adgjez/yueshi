@@ -513,15 +513,19 @@ object AiChatService {
         }
     }
 
-    private fun aiChatHttpClient(firstResponseTimeoutMillis: Long = 0L) = AiHttpClient.builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(300, TimeUnit.SECONDS)
-        .readTimeout(
-            if (firstResponseTimeoutMillis > 0L) firstResponseTimeoutMillis else 300_000L,
-            TimeUnit.MILLISECONDS
-        )
-        .callTimeout(300, TimeUnit.SECONDS)
-        .build()
+    private fun aiChatHttpClient(firstResponseTimeoutMillis: Long = 0L) =
+        // 在共享单例 client 的连接池/线程池基础上派生新 client，避免每次调用都新建
+        // 一个独立的 ConnectionPool —— Agent 多轮循环下旧 client 的空闲连接无法被复用，
+        // 最终累积成 socket/线程泄漏。newBuilder() 共享 dispatcher 与 connectionPool。
+        AiHttpClient.client().newBuilder()
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(300, TimeUnit.SECONDS)
+            .readTimeout(
+                if (firstResponseTimeoutMillis > 0L) firstResponseTimeoutMillis else 300_000L,
+                TimeUnit.MILLISECONDS
+            )
+            .callTimeout(300, TimeUnit.SECONDS)
+            .build()
 
     private suspend fun requestCompletionStreamWithFallback(
         chatUrl: String,

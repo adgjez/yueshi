@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,7 +48,12 @@ class AiChatViewModel : ViewModel() {
     var isRequesting = false
         private set
 
-    private val messages = mutableListOf<AiChatMessage>()
+    /**
+     * 流式 SSE 回调（[onPartial] 等）在协程线程修改本列表，UI 线程同时读取。
+     * 用 [CopyOnWriteArrayList] 保证并发安全：写时复制底层数组，读无锁。
+     * 流式写入频率每秒数十次、列表长度通常 < 200，复制开销可接受。
+     */
+    private val messages: MutableList<AiChatMessage> = CopyOnWriteArrayList()
     private var currentCompanionId: String = AppConfig.aiCurrentChatCompanionId
     private var currentSessionId: String = AppConfig.aiCurrentChatSessionId ?: UUID.randomUUID().toString()
     private var windowSkillIds: Set<String> = emptySet()

@@ -111,6 +111,9 @@ internal object AiAgentRuntime {
                     )
                 }
                 if (requireGoalCompletion) {
+                    // 在发起额外的 goal completion 检查调用前确认协程未被取消，
+                    // 避免取消后仍消耗一次模型请求。
+                    currentCoroutineContext().ensureActive()
                     val completionCheck = requestAssistantTurn(
                         roundNo,
                         conversation + JSONObject().apply {

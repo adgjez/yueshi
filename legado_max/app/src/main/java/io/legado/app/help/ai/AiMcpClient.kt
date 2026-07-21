@@ -10,6 +10,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 object AiMcpClient {
 
@@ -38,8 +39,9 @@ object AiMcpClient {
         val inputSchema: JSONObject
     )
 
-    private val sessionMap = mutableMapOf<String, SessionState>()
-    private val toolCache = mutableMapOf<String, CachedTools>()
+    // 并发 MCP 工具调用可能同时读写这两个 Map，用 ConcurrentHashMap 避免 race。
+    private val sessionMap = ConcurrentHashMap<String, SessionState>()
+    private val toolCache = ConcurrentHashMap<String, CachedTools>()
 
     suspend fun resolveTools(servers: List<AiMcpServerConfig>): List<AiResolvedTool> {
         val result = mutableListOf<AiResolvedTool>()
