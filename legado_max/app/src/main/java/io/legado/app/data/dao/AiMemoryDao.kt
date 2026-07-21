@@ -96,6 +96,40 @@ interface AiMemoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsertFragment(fragment: AiMemoryFragment)
 
+    /**
+     * 单事务包装：fingerprint 去重 + 主行 upsert + FTS 删除/重插，
+     * 防止并发写入相同 fingerprint 时第二条命中唯一索引抛 SQLiteConstraintException，
+     * 也避免 FTS 半途失败留下孤儿行。
+     */
+    @androidx.room.Transaction
+    fun upsertItemWithFts(item: AiMemoryItem): Boolean {
+        if (item.fingerprint.isNotBlank() && itemExistsByFingerprint(item.fingerprint)) {
+            return false
+        }
+        upsertItem(item)
+        deleteItemFts(item.memoryId)
+        upsertItemFts(
+            memoryId = item.memoryId,
+            subject = item.subject,
+            predicate = item.predicate,
+            objectValue = item.objectValue,
+            content = item.content
+        )
+        return true
+    }
+
+    @androidx.room.Transaction
+    fun upsertFragmentWithFts(fragment: AiMemoryFragment) {
+        upsertFragment(fragment)
+        deleteFragmentFts(fragment.fragmentId)
+        upsertFragmentFts(
+            fragmentId = fragment.fragmentId,
+            title = fragment.title,
+            content = fragment.content,
+            chapterTitle = fragment.chapterTitle
+        )
+    }
+
     @Query(
         """
         INSERT OR REPLACE INTO ai_memory_items_fts(memoryId, subject, predicate, objectValue, content)

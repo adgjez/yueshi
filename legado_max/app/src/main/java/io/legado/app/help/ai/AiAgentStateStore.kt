@@ -240,21 +240,13 @@ object AiAgentStateStore {
     }
 
     fun markExpiredRunningJobs(now: Long = System.currentTimeMillis()) {
-        appDb.aiAgentDao.expiredRunningJobs(now).forEach { job ->
-            val reason = "任务被系统中断，等待恢复"
-            appDb.aiAgentDao.markJobWaitingResume(
-                jobId = job.jobId,
-                error = reason,
-                nextRunAt = now + 5_000L,
-                updatedAt = now
-            )
-            appDb.aiAgentDao.updateSessionStatus(
-                sessionId = job.sessionId,
-                status = AiAgentSession.STATUS_WAITING_RESUME,
-                error = reason,
-                updatedAt = now
-            )
-        }
+        // 委托给 DAO 层 @Transaction 方法，保证整批 sweep 在单事务内完成，
+        // 避免中途异常留下部分 job 已切回 waitingResume、部分仍是 running 的不一致状态。
+        appDb.aiAgentDao.sweepExpiredRunningJobs(
+            now = now,
+            nextRunAt = now + 5_000L,
+            reason = "任务被系统中断，等待恢复"
+        )
     }
 
     private fun buildCheckpoint(

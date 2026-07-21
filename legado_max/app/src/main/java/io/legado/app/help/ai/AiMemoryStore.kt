@@ -58,35 +58,11 @@ object AiMemoryStore {
     }
 
     fun upsertItem(item: AiMemoryItem) {
-        val saving = item.withFingerprint()
-        if (saving.fingerprint.isNotBlank()
-            && appDb.aiMemoryDao.itemExistsByFingerprint(saving.fingerprint)
-        ) {
-            // 同一 (scope/bookKey/sessionId/type/subject/predicate/objectValue/content)
-            // 组合已存在，不重复插入；同一次会话内的"完全相同偏好复述"走这里静默跳过。
-            return
-        }
-        appDb.aiMemoryDao.upsertItem(saving)
-        appDb.aiMemoryDao.deleteItemFts(saving.memoryId)
-        appDb.aiMemoryDao.upsertItemFts(
-            memoryId = saving.memoryId,
-            subject = saving.subject,
-            predicate = saving.predicate,
-            objectValue = saving.objectValue,
-            content = saving.content
-        )
+        appDb.aiMemoryDao.upsertItemWithFts(item.withFingerprint())
     }
 
     fun upsertFragment(fragment: AiMemoryFragment) {
-        val saving = fragment.withContentHash()
-        appDb.aiMemoryDao.upsertFragment(saving)
-        appDb.aiMemoryDao.deleteFragmentFts(saving.fragmentId)
-        appDb.aiMemoryDao.upsertFragmentFts(
-            fragmentId = saving.fragmentId,
-            title = saving.title,
-            content = saving.content,
-            chapterTitle = saving.chapterTitle
-        )
+        appDb.aiMemoryDao.upsertFragmentWithFts(fragment.withContentHash())
     }
 
     private fun AiMemoryItem.withFingerprint(): AiMemoryItem {
