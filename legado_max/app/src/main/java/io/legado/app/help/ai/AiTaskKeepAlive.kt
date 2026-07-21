@@ -36,6 +36,7 @@ object AiTaskKeepAlive {
     const val KIND_ROLE_ASSIGN = "role_assign"
 
     private val activeTasks = ConcurrentHashMap<String, TaskState>()
+    @Volatile
     private var lastNotifyAt = 0L
 
     val activeCount: Int
