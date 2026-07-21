@@ -65,18 +65,20 @@ class AiChatViewModel : ViewModel() {
 
     companion object {
         private val requestScope = CoroutineScope(SupervisorJob() + IO)
-        private var activeJob: Job? = null
-        private var activeCompanionId: String? = null
-        private var activeSessionId: String? = null
-        private var activeViewModel: AiChatViewModel? = null
-        private var activePendingContent: String = ""
-        private var activeThinkingMessageId: String? = null
-        private var activeThinkingKey: String? = null
-        private var activeThinkingLabel: String? = null
-        private var activePendingAssistantMessageId: String? = null
-        private var activeVariantGroupId: String? = null
-        private var activeVariantIndex: Int = 0
-        private var activeAgentRun: AiAgentStateStore.Run? = null
+        // 这些 active* 字段在 requestScope 协程内写入、主线程读取（如 targetFor），
+        // JVM 内存模型下主线程可能读到 stale 值；@Volatile 保证跨线程可见性。
+        @Volatile private var activeJob: Job? = null
+        @Volatile private var activeCompanionId: String? = null
+        @Volatile private var activeSessionId: String? = null
+        @Volatile private var activeViewModel: AiChatViewModel? = null
+        @Volatile private var activePendingContent: String = ""
+        @Volatile private var activeThinkingMessageId: String? = null
+        @Volatile private var activeThinkingKey: String? = null
+        @Volatile private var activeThinkingLabel: String? = null
+        @Volatile private var activePendingAssistantMessageId: String? = null
+        @Volatile private var activeVariantGroupId: String? = null
+        @Volatile private var activeVariantIndex: Int = 0
+        @Volatile private var activeAgentRun: AiAgentStateStore.Run? = null
         // requestScope 协程（upsertToolEvent 写）与主线程（stopRequest -> finishActiveTools
         // 也会触发清理/遍历）并发访问，用 ConcurrentHashMap 避免结构性 race。
         // 顺序对本场景不影响（每个 value 独立处理），不需要 LinkedHashMap 保序。

@@ -26,7 +26,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 
 data class AiUsageStats(
     val inputTokens: Int = 0,
@@ -722,6 +724,10 @@ object AiChatService {
             }
             source.use {
                 while (true) {
+                    // 协程被取消时 readUtf8Line() 不会立即响应（依赖 socket 关闭抛 IOException），
+                    // 服务端持续发心跳或 socket 半开时取消会延迟生效。每次循环顶部主动检查
+                    // 取消状态，让用户点"停止"能尽快释放 IO 线程。
+                    currentCoroutineContext().ensureActive()
                     val rawLine = it.readUtf8Line()?.trim() ?: break
                     if (rawLine.isEmpty()) continue
                     if (!firstPayloadReceived) {
@@ -912,7 +918,8 @@ object AiChatService {
         extractError(payload).takeIf { it.isNotBlank() }?.let {
             throw IllegalStateException(it)
         }
-        val root = JSONObject(payload)
+        // 同 consumeStreamPayload：畸形 JSON 跳过该事件，避免中断整条 SSE 流。
+        val root = runCatching { JSONObject(payload) }.getOrNull() ?: return
         extractUsage(root)?.let(onUsage)
         val type = root.optString("type")
         when {
@@ -1098,7 +1105,10 @@ object AiChatService {
         extractError(payload).takeIf { it.isNotBlank() }?.let {
             throw IllegalStateException(it)
         }
-        val root = JSONObject(payload)
+        // 上游网关可能返回畸形 JSON（代理截断、CDN 注入 HTML 错误页）。
+        // JSONObject 抛 JSONException 会中断整条 SSE 流，单条畸形事件不应导致整次对话失败，
+        // 用 runCatching 跳过该事件，让后续事件继续解析。
+        val root = runCatching { JSONObject(payload) }.getOrNull() ?: return
         extractUsage(root)?.let(onUsage)
         val choice = root.optJSONArray("choices")?.optJSONObject(0) ?: return
         val delta = choice.optJSONObject("delta") ?: choice.optJSONObject("message") ?: return

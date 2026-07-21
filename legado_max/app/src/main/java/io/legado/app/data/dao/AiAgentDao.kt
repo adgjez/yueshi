@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import io.legado.app.data.entities.AiAgentJob
 import io.legado.app.data.entities.AiAgentSession
 import io.legado.app.data.entities.AiAgentTrace
@@ -87,4 +88,28 @@ interface AiAgentDao {
         nextRunAt: Long = 0L,
         updatedAt: Long = System.currentTimeMillis()
     )
+
+    /**
+     * 单事务批量 sweep 过期 running job：避免中途异常留下部分 job 已切回 waitingResume、
+     * 部分仍是 running 的不一致状态。每条 job 的事务边界 = (job 行 + session 行)。
+     */
+    @Transaction
+    fun sweepExpiredRunningJobs(now: Long, nextRunAt: Long, reason: String): Int {
+        val expired = expiredRunningJobs(now)
+        expired.forEach { job ->
+            markJobWaitingResume(
+                jobId = job.jobId,
+                error = reason,
+                nextRunAt = nextRunAt,
+                updatedAt = now
+            )
+            updateSessionStatus(
+                sessionId = job.sessionId,
+                status = AiAgentSession.STATUS_WAITING_RESUME,
+                error = reason,
+                updatedAt = now
+            )
+        }
+        return expired.size
+    }
 }

@@ -2,7 +2,10 @@ package io.legado.app.help.ai
 
 import android.content.SharedPreferences
 import android.util.Base64
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -40,6 +43,17 @@ object AiCredentialStore {
     private const val SCHEME_VERSION = 1
 
     private val mutex = Mutex()
+
+    /**
+     * 进程级 IO scope，仅用于 fire-and-forget 落盘（putSync/removeSync 的异步写）。
+     * SupervisorJob 保证单次写失败不影响后续写。
+     * limitedParallelism(1) 把 dispatcher 限制为单 worker，保证多次 launch 的写入
+     * 按调用顺序串行入队 —— 否则同 key 连续 putSync/removeSync 可能乱序落盘，
+     * 冷启动从 SP 读到旧值或丢值（原 runBlocking(IO) 天然顺序）。
+     */
+    private val ioScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO.limitedParallelism(1)
+    )
 
     @Volatile
     private var prefs: SharedPreferences? = null
@@ -111,7 +125,10 @@ object AiCredentialStore {
     }
 
     private fun putAsync(key: String, payload: String) {
-        kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+        // UI 同步路径调用（putSync），不能 runBlocking 阻塞调用方 —— 主线程会 ANR，
+        // 协程调用会占 IO 线程槽位。改用进程级 scope launch fire-and-forget：cache 已
+        // 在 putSync 内同步更新，落盘失败下次冷启动会重新读 SP 取回旧值，可接受。
+        ioScope.launch {
             try {
                 store().edit().putString(encodeKey(key), payload).apply()
             } catch (t: Throwable) {
@@ -125,7 +142,7 @@ object AiCredentialStore {
      */
     fun removeSync(key: String) {
         cacheMap().remove(key)
-        kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+        ioScope.launch {
             try {
                 store().edit().remove(encodeKey(key)).apply()
             } catch (t: Throwable) {
