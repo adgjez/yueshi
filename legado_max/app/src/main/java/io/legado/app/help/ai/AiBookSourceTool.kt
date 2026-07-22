@@ -1,6 +1,10 @@
 package io.legado.app.help.ai
 
+<<<<<<< HEAD
 import kotlinx.coroutines.CancellationException
+=======
+import kotlinx.coroutines.sync.withLock
+>>>>>>> 9f24dec (fix(ai): 并发安全修复)
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.model.Debug
@@ -380,12 +384,14 @@ object AiBookSourceTool {
             }
         }
         val debugScope = this
-        val state = Debug.withDebugSource(source.bookSourceUrl, callback) {
-            try {
-                Debug.startDebug(debugScope, source, key)
-                withTimeoutOrNull(timeoutMs) { finished.await() }
-            } finally {
-                Debug.cancelDebug()
+        val state = Debug.debugMutex.withLock {
+            Debug.withDebugSource(source.bookSourceUrl, callback) {
+                try {
+                    Debug.startDebug(debugScope, source, key)
+                    withTimeoutOrNull(timeoutMs) { finished.await() }
+                } finally {
+                    Debug.cancelDebug()
+                }
             }
         }
         ok().apply {

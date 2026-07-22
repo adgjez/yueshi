@@ -100,7 +100,7 @@ object AiCredentialStore {
 
     private fun cacheMap(): MutableMap<String, String> {
         return cache ?: synchronized(this) {
-            cache ?: mutableMapOf<String, String>().also { cache = it }
+            cache ?: java.util.concurrent.ConcurrentHashMap<String, String>().also { cache = it }
         }
     }
 

@@ -32,7 +32,7 @@ object AiBookshelfTool {
     private const val TOOL_READ_CHAPTER = "read_book_chapter_content"
     private const val DEFAULT_LIMIT = 6
     private const val MAX_LIMIT = 20
-    private val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private fun timeFormat() = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
     fun resolvedTools(): List<AiResolvedTool> {
         return listOf(
@@ -1211,6 +1211,6 @@ object AiBookshelfTool {
 
     private fun formatTime(time: Long): String {
         if (time <= 0L) return ""
-        return timeFormat.format(Date(time))
+        return timeFormat().format(Date(time))
     }
 }
