@@ -308,6 +308,11 @@ class AiChatViewModel : ViewModel() {
                     activeVariantGroupId = null
                     activeVariantIndex = 0
                 }.onFailure { throwable ->
+                    // stopRequest 同步处理用户取消后会把 activeAgentRun 置 null，
+                    // 协程异步 onFailure 不再重复处理，避免重复消息
+                    if (throwable is CancellationException && activeAgentRun == null) {
+                        return@onFailure
+                    }
                     targetFor(requestSessionId, requestCompanionId).finishActiveThinking(fallback = throwable.localizedMessage)
                     targetFor(requestSessionId, requestCompanionId).finishActiveTools(false, throwable.localizedMessage ?: throwable.javaClass.simpleName)
                     activePendingContent = ""

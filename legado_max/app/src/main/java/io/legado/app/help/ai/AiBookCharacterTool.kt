@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import kotlinx.coroutines.CancellationException
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.AiGeneratedImage
 import io.legado.app.data.entities.Book
@@ -851,6 +852,7 @@ object AiBookCharacterTool {
                 )
             )
         }.getOrElse {
+            if (it is CancellationException) throw it
             return errorJson("生成头像失败：${it.localizedMessage ?: it.javaClass.simpleName}")
         }
         val updated = withContext(IO) {

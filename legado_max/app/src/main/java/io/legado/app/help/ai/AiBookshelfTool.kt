@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import kotlinx.coroutines.CancellationException
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
@@ -907,6 +908,7 @@ object AiBookshelfTool {
                     ?: throw IllegalStateException("未找到书源")
                 WebBook.getContentAwait(source, book, chapter)
             }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
                 AppLog.put(
                     "AI 工具：加载章节正文失败（缓存未命中且重新抓取失败）book=${book.name} chapter=${chapter.title}",
                     throwable
