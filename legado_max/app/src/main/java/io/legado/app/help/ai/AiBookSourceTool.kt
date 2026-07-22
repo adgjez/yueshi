@@ -1,10 +1,7 @@
 package io.legado.app.help.ai
 
-<<<<<<< HEAD
 import kotlinx.coroutines.CancellationException
-=======
 import kotlinx.coroutines.sync.withLock
->>>>>>> 9f24dec (fix(ai): 并发安全修复)
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.model.Debug
