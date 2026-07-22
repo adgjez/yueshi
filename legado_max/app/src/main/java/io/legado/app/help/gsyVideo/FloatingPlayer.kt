@@ -20,6 +20,7 @@ class FloatingPlayer : StandardGSYVideoPlayer {
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
 
     lateinit var fullscreenB: ImageView
+    private lateinit var resizeHandle: ImageView
 
     override fun init(context: Context?) {
         if (activityContext != null) {
@@ -38,6 +39,7 @@ class FloatingPlayer : StandardGSYVideoPlayer {
         mBackButton = findViewById(R.id.back)
         mBottomProgressBar = findViewById(R.id.bottom_progressbar)
         fullscreenB = findViewById(R.id.fullscreenB)
+        resizeHandle = findViewById(R.id.resizeHandle)
     }
 
     override fun getLayoutId(): Int {
@@ -109,6 +111,20 @@ class FloatingPlayer : StandardGSYVideoPlayer {
             resolveUIState(mCurrentState)
         } else {
             hideAllWidget()
+        }
+    }
+
+    override fun resolveUIState(state: Int) {
+        super.resolveUIState(state)
+        if (this::resizeHandle.isInitialized) {
+            resizeHandle.visibility = VISIBLE
+        }
+    }
+
+    override fun hideAllWidget() {
+        super.hideAllWidget()
+        if (this::resizeHandle.isInitialized) {
+            resizeHandle.visibility = INVISIBLE
         }
     }
 

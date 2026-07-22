@@ -73,6 +73,7 @@
         android:padding="4dp"
         android:scaleType="centerInside"
         android:src="@drawable/ic_resize"
+        android:visibility="invisible"
         android:contentDescription="@string/adjust" />
 
 </RelativeLayout>
