@@ -11,7 +11,7 @@ data class AiResolvedTool(
 
 object AiToolRegistry {
 
-    private const val TOOL_SETTINGS_VERSION = 16
+    private const val TOOL_SETTINGS_VERSION = 17
     private val version2AddedDefaultTools = setOf(
         "list_speech_catalogs",
         "assign_character_speech_route",
@@ -83,6 +83,9 @@ object AiToolRegistry {
     private val version15AddedDefaultTools = setOf(
         "workspace_read_lines",
         "workspace_diff_file"
+    )
+    private val version16AddedDefaultTools = setOf(
+        "edit_image"
     )
 
     val characterCompanionToolNames = setOf(
@@ -158,6 +161,7 @@ object AiToolRegistry {
         "reading_webview",
         "capture_web_requests",
         "generate_image",
+        "edit_image",
         "list_book_characters",
         "upsert_book_character",
         "delete_book_character",
@@ -452,6 +456,7 @@ object AiToolRegistry {
                 if (AppConfig.aiEnabledToolNamesVersion < 13) addAll(version13AddedDefaultTools)
                 if (AppConfig.aiEnabledToolNamesVersion < 14) addAll(version14AddedDefaultTools)
                 if (AppConfig.aiEnabledToolNamesVersion < 15) addAll(version15AddedDefaultTools)
+                if (AppConfig.aiEnabledToolNamesVersion < 16) addAll(version16AddedDefaultTools)
             }
             val migrated = (stored.ifEmpty { defaultEnabledTools } + additions)
                 .minus(if (AppConfig.aiEnabledToolNamesVersion < 12) version12RemovedDefaultTools else emptySet())
