@@ -2188,6 +2188,7 @@
     <string name="ai_image_style_prompt">风格提示词</string>
     <string name="ai_image_script">生图脚本</string>
     <string name="ai_image_generate">生图</string>
+    <string name="ai_image_edit">图片编辑</string>
     <string name="ai_image_gallery">AI 图片库</string>
     <string name="ai_image_gallery_summary">查看生成图片、收藏分组和临时图片</string>
     <string name="ai_image_gallery_empty">暂无图片</string>

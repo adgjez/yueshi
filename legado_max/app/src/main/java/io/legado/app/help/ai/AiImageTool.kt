@@ -67,11 +67,129 @@ object AiImageTool {
                                 .put("success", true)
                                 .put("type", "image")
                                 .put("imageId", image.id)
+                                .put("imageRef", AiImageGalleryManager.imageUri(image.id))
                                 .put("imagePath", image.localPath)
                                 .put("name", image.name)
                                 .put("prompt", prompt)
                                 .put("provider", image.providerName)
                                 .put("model", image.model)
+                                .toString()
+                        }.getOrElse {
+                            JSONObject()
+                                .put("ok", false)
+                                .put("success", false)
+                                .put("error", it.localizedMessage ?: it.javaClass.simpleName)
+                                .apply {
+                                    targetProvider?.let { current ->
+                                        put("provider", current.displayName())
+                                        put("providerType", current.type)
+                                        put("baseUrl", current.baseUrl)
+                                        put("model", current.model)
+                                    }
+                                }
+                                .toString()
+                        }
+                    }
+                }
+            }
+        ),
+        AiResolvedTool(
+            name = "edit_image",
+            definition = JSONObject().apply {
+                put("type", "function")
+                put("function", JSONObject().apply {
+                    put("name", "edit_image")
+                    put(
+                        "description",
+                        "Edit/modify an existing image based on a prompt. " +
+                            "Use when the user asks to modify, edit, or transform an already-existing image " +
+                            "(e.g. \"把背景换成海滩\", \"去掉图里的文字\", \"让这张图变成水彩风格\"). " +
+                            "Do NOT use for generating a brand-new image from scratch — use generate_image for that. " +
+                            "The source image is identified by its ai-image:// reference."
+                    )
+                    put("parameters", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject().apply {
+                            put("image", JSONObject().apply {
+                                put("type", "string")
+                                put(
+                                    "description",
+                                    "Source image reference in the form ai-image://{id}. " +
+                                        "Must be a reference previously shown in the conversation " +
+                                        "(from a user upload or a prior generate_image result's imageRef field)."
+                                )
+                            })
+                            put("prompt", JSONObject().apply {
+                                put("type", "string")
+                                put("description", "Edit instruction describing how to modify the image.")
+                            })
+                            put("providerId", JSONObject().apply {
+                                put("type", "string")
+                                put("description", "Optional image provider id. Use only when user explicitly selects an image model; otherwise omit it.")
+                            })
+                            put("size", JSONObject().apply {
+                                put("type", "string")
+                                put("description", "Optional. Output size as WIDTHxHEIGHT. Same size tiers as generate_image. If omitted, provider default is used.")
+                            })
+                        })
+                        put("required", JSONArray().put("image").put("prompt"))
+                    })
+                })
+            },
+            execute = { args ->
+                val imageRef = args?.optString("image").orEmpty().trim()
+                val prompt = args?.optString("prompt").orEmpty().trim()
+                if (imageRef.isBlank() || !imageRef.startsWith("ai-image://")) {
+                    JSONObject()
+                        .put("ok", false)
+                        .put("success", false)
+                        .put("error", "image must be an ai-image:// reference")
+                        .toString()
+                } else if (prompt.isBlank()) {
+                    JSONObject()
+                        .put("ok", false)
+                        .put("success", false)
+                        .put("error", "prompt is empty")
+                        .toString()
+                } else {
+                    val providerId = args?.optString("providerId").orEmpty().trim()
+                    val size = args?.optString("size").orEmpty().trim().takeIf { it.isNotBlank() }
+                    val provider = if (providerId.isBlank()) {
+                        null
+                    } else {
+                        AiImageService.providerByIdOrNull(providerId)
+                    }
+                    if (providerId.isNotBlank() && provider == null) {
+                        JSONObject()
+                            .put("ok", false)
+                            .put("success", false)
+                            .put("error", "image provider is unavailable: $providerId")
+                            .toString()
+                    } else {
+                        val targetProvider = provider ?: AiImageService.currentProviderOrNull()
+                        runCatching {
+                            val image = AiImageService.editAndStore(
+                                sourceImageRef = imageRef,
+                                prompt = prompt,
+                                provider = provider,
+                                metadata = AiImageGalleryManager.ImageMetadata(
+                                    sourceType = AiImageGalleryManager.SOURCE_TYPE_CHAT,
+                                    sourceText = prompt
+                                ),
+                                size = size
+                            )
+                            JSONObject()
+                                .put("ok", true)
+                                .put("success", true)
+                                .put("type", "image")
+                                .put("imageId", image.id)
+                                .put("imageRef", AiImageGalleryManager.imageUri(image.id))
+                                .put("imagePath", image.localPath)
+                                .put("name", image.name)
+                                .put("prompt", prompt)
+                                .put("provider", image.providerName)
+                                .put("model", image.model)
+                                .put("sourceImageRef", imageRef)
                                 .toString()
                         }.getOrElse {
                             JSONObject()

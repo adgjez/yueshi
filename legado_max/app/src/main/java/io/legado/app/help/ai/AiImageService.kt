@@ -17,12 +17,16 @@ import io.legado.app.help.source.getShareScope
 import io.legado.app.ui.main.ai.AiImageProviderConfig
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withTimeout
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 import org.mozilla.javascript.NativeArray
 import org.mozilla.javascript.NativeObject
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 object AiImageService {
@@ -53,6 +57,97 @@ object AiImageService {
         val target = resolveProvider(provider)
         val image = generateRaw(effectivePrompt(prompt, target), target, size)
         return AiImageGalleryManager.saveGeneratedImage(image.source, prompt, target, image.model, metadata)
+    }
+
+    /**
+     * 图生图：基于已有图片 [sourceImageRef]（ai-image://{id}）按 [prompt] 编辑生成新图。
+     * 走 OpenAI 兼容 /images/edits 端点（multipart）。JS provider 不支持，抛错。
+     */
+    suspend fun editAndStore(
+        sourceImageRef: String,
+        prompt: String,
+        provider: AiImageProviderConfig? = null,
+        metadata: AiImageGalleryManager.ImageMetadata = AiImageGalleryManager.ImageMetadata(),
+        size: String? = null
+    ): AiGeneratedImage {
+        val target = resolveProvider(provider)
+        require(target.type != AiImageProviderConfig.TYPE_JS) { "当前图片源(JS)不支持图生图" }
+        val sourceFile = AiImageGalleryManager.resolveImageFile(sourceImageRef)
+            ?: error("源图不存在：$sourceImageRef")
+        require(sourceFile.isFile) { "源图文件缺失：${sourceFile.absolutePath}" }
+        val baseUrl = normalizeBaseUrl(target.baseUrl).ifBlank { error("Base URL is empty") }
+        val params = runCatching { JSONObject(target.defaultParamsJson.ifBlank { "{}" }) }
+            .getOrDefault(JSONObject())
+        val result = editByImagesApi(sourceFile, prompt.trim(), target, baseUrl, params, size)
+        return AiImageGalleryManager.saveGeneratedImage(
+            result.source,
+            prompt,
+            target,
+            result.model,
+            metadata.copy(sourceText = metadata.sourceText.ifBlank { "编辑自 $sourceImageRef" })
+        )
+    }
+
+    private suspend fun editByImagesApi(
+        sourceFile: File,
+        prompt: String,
+        provider: AiImageProviderConfig,
+        baseUrl: String,
+        params: JSONObject,
+        size: String?
+    ): ImageGenerationResult {
+        val effectiveModel = provider.model
+            .ifBlank { params.optString("model").ifBlank { "gpt-image-1" } }
+        val requestUrl = "${baseUrl.trimEnd('/')}/images/edits"
+        val mime = when (sourceFile.extension.lowercase()) {
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "gif" -> "image/gif"
+            else -> "image/jpeg"
+        }
+        val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("model", effectiveModel)
+            .addFormDataPart("prompt", prompt)
+            .addFormDataPart("n", "1")
+            .addFormDataPart("size", "1024x1024")
+            .apply {
+                size?.takeIf { it.isNotBlank() }?.let { addFormDataPart("size", it) }
+                params.optString("response_format")?.takeIf { it.isNotBlank() }
+                    ?.let { addFormDataPart("response_format", it) }
+            }
+            .addFormDataPart(
+                "image",
+                sourceFile.name,
+                sourceFile.asRequestBody(mime.toMediaTypeOrNull())
+            )
+            .build()
+        val startedAt = System.currentTimeMillis()
+        var status = ""
+        try {
+            val response = provider.httpClient().newCallResponse {
+                url(requestUrl)
+                post(multipart)
+                addHeader("Accept", "application/json")
+                provider.apiKey.takeIf { it.isNotBlank() }?.let {
+                    addHeader("Authorization", "Bearer $it")
+                }
+                addHeaders(AiChatService.parseCustomHeaders(provider.headers))
+            }
+            response.use {
+                status = "${it.code} ${it.message}"
+                val text = it.body.stringLimited(MAX_IMAGE_RESPONSE_BYTES)
+                if (!it.isSuccessful) error(text.ifBlank { status })
+                val root = JSONObject(text)
+                imageFromOpenAiResponse(root)?.let { source ->
+                    logRequest(provider, requestUrl, status, startedAt, true, effectiveModel)
+                    return ImageGenerationResult(source, effectiveModel)
+                }
+                error("No image url or base64 field in edit response: ${jsonShape(root)}")
+            }
+        } catch (e: Throwable) {
+            logRequest(provider, requestUrl, status.ifBlank { e.javaClass.simpleName }, startedAt, false, effectiveModel, e)
+            throw e
+        }
     }
 
     fun currentProviderOrNull(): AiImageProviderConfig? {

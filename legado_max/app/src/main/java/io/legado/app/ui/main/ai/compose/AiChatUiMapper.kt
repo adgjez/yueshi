@@ -424,6 +424,16 @@ private fun parseToolDisplayPayload(
                 images = listOfNotNull(image)
             )
         }
+        "edit_image" -> {
+            val image = parseImageResult(raw)
+            AiToolDisplayPayload(
+                type = AiToolPreviewType.ImageResult,
+                title = context.getString(R.string.ai_image_edit),
+                summary = image?.prompt?.takeIf { it.isNotBlank() } ?: context.getString(R.string.ai_image_generated),
+                raw = raw,
+                images = listOfNotNull(image)
+            )
+        }
         "generate_book_character_avatar",
         "set_book_character_avatar_from_gallery" -> {
             val image = parseImageResult(raw)
