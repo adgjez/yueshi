@@ -27,7 +27,11 @@ object AiSettingsTool {
     )
 
     private val settingDefs = listOf(
-        SettingDef(PreferKey.themeMode, "int", min = 0, max = 3),
+        SettingDef(
+            PreferKey.themeMode,
+            "string",
+            values = setOf("0", "1", "2", "3")
+        ),
         SettingDef(PreferKey.modernDiscoveryPage, "boolean"),
         SettingDef(
             PreferKey.discoveryPageMode,
@@ -269,13 +273,26 @@ object AiSettingsTool {
         }
         return when (type) {
             "boolean" -> appCtx.getPrefBoolean(key, false)
-            "int" -> appCtx.getPrefInt(key, 0)
+            "int" -> readPrefIntSafe(key, 0)
             else -> appCtx.getPrefString(key).orEmpty()
+        }
+    }
+
+    // 容错读取 int：SP 中该 key 可能因历史脏数据存为 String，直接 getInt 会抛
+    // ClassCastException，导致 get_app_settings 整体失败。
+    private fun readPrefIntSafe(key: String, defValue: Int): Int {
+        return runCatching { appCtx.getPrefInt(key, defValue) }.getOrElse {
+            appCtx.getPrefString(key).orEmpty().trim().toIntOrNull() ?: defValue
         }
     }
 
     private fun categoryKeys(category: String): List<String> {
         return when (category) {
+            "ui" -> listOf(
+                PreferKey.themeMode,
+                PreferKey.defaultHomePage
+            )
+
             "discovery" -> listOf(
                 PreferKey.discoveryPageMode,
                 PreferKey.modernDiscoveryPage
