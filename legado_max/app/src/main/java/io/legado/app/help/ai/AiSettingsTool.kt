@@ -2,12 +2,15 @@ package io.legado.app.help.ai
 
 import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.ThemeConfig
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import splitties.init.appCtx
@@ -169,7 +172,7 @@ object AiSettingsTool {
         }.toString()
     }
 
-    private fun setSetting(arguments: JSONObject?): String {
+    private suspend fun setSetting(arguments: JSONObject?): String {
         if (arguments == null) return jsonError("missing arguments")
         val key = arguments.optString("key").trim()
         val value = arguments.opt("value")
@@ -180,7 +183,7 @@ object AiSettingsTool {
         }.toString()
     }
 
-    private fun setSettingsBatch(arguments: JSONObject?): String {
+    private suspend fun setSettingsBatch(arguments: JSONObject?): String {
         if (arguments == null) return jsonError("missing arguments")
         val items = arguments.optJSONArray("items") ?: return jsonError("missing items")
         val results = JSONArray()
@@ -201,7 +204,7 @@ object AiSettingsTool {
         }.toString()
     }
 
-    private fun applySetting(key: String, rawValue: Any?): JSONObject {
+    private suspend fun applySetting(key: String, rawValue: Any?): JSONObject {
         val def = settingDefMap[key] ?: return JSONObject().apply {
             put("ok", false)
             put("key", key)
@@ -247,6 +250,16 @@ object AiSettingsTool {
                         AppConfig.discoveryPageMode = value
                     } else {
                         appCtx.putPrefString(key, value)
+                        if (key == PreferKey.themeMode) {
+                            // putPrefString 触发的 SP 监听器是异步的，此处显式同步
+                            // AppConfig.themeMode / isEInkMode，再切主线程应用主题，
+                            // 否则 isNightTheme 计算属性仍读旧 themeMode 且无 recreate。
+                            AppConfig.themeMode = value
+                            AppConfig.isEInkMode = value == "3"
+                            withContext(Dispatchers.Main) {
+                                ThemeConfig.applyDayNight(appCtx)
+                            }
+                        }
                     }
                 }
             }
