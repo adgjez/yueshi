@@ -332,3 +332,33 @@ fun Bitmap.compressPreservingAlpha(outputStream: OutputStream, jpegQuality: Int 
         outputStream
     )
 }
+
+/**
+ * 将 Bitmap 压缩为多模态聊天可用的 data URL。
+ *
+ * - 长边不超过 [maxLongEdge]（默认 1024），等比缩放
+ * - 转 JPEG（[jpegQuality]，默认 85），无透明通道需求
+ * - 返回 `data:image/jpeg;base64,...` 字符串
+ *
+ * 调用者负责回收原 bitmap；本函数内部缩放后产生的中间 bitmap 会被回收。
+ * 若原图已经小于等于目标尺寸则不缩放，直接压缩原 bitmap。
+ */
+fun Bitmap.toCompressedDataUrl(maxLongEdge: Int = 1024, jpegQuality: Int = 85): String {
+    val source = this
+    val originalLongEdge = maxOf(source.width, source.height)
+    val target = if (originalLongEdge > maxLongEdge && source.width > 0 && source.height > 0) {
+        val scale = maxLongEdge.toFloat() / originalLongEdge.toFloat()
+        val newWidth = (source.width * scale).toInt().coerceAtLeast(1)
+        val newHeight = (source.height * scale).toInt().coerceAtLeast(1)
+        source.resizeAndRecycle(newWidth, newHeight)
+    } else {
+        source
+    }
+    val baos = ByteArrayOutputStream()
+    target.compress(Bitmap.CompressFormat.JPEG, jpegQuality, baos)
+    if (target !== source) {
+        target.recycle()
+    }
+    val base64 = android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP)
+    return "data:image/jpeg;base64,$base64"
+}

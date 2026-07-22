@@ -1,5 +1,9 @@
 package io.legado.app.help.ai
 
+import android.content.ContentResolver
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.webkit.URLUtil
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
@@ -10,6 +14,8 @@ import io.legado.app.help.http.newCallResponse
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.ui.main.ai.AiImageProviderConfig
 import io.legado.app.utils.decodeBase64DataUrlBytes
+import io.legado.app.utils.resizeAndRecycle
+import io.legado.app.utils.toCompressedDataUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -30,6 +36,7 @@ object AiImageGalleryManager {
     private const val DEFAULT_GROUP_NAME = "默认分组"
     private const val TEMP_KEEP_DAYS = 3L
     private const val MAX_IMAGE_BYTES = 32 * 1024 * 1024
+    private const val MAX_DATA_URL_INLINE_BYTES = 4 * 1024 * 1024
 
     private val imageDir: File
         get() = File(appCtx.filesDir, "ai_images").apply { mkdirs() }
@@ -173,6 +180,85 @@ object AiImageGalleryManager {
         return File(image.localPath).takeIf { it.isFile }
     }
 
+    /**
+     * 保存用户从相册选择的图片。落盘时已压缩（长边 [maxLongEdge]，JPEG [jpegQuality]），
+     * sourceType = SOURCE_TYPE_CHAT，favorite = false（3 天后由 cleanupExpiredTemporary 回收）。
+     *
+     * @return 落盘后的 AiGeneratedImage，调用方可通过 [imageUri] 拿到 ai-image://{id} 引用
+     */
+    suspend fun saveUserInputImage(
+        uri: Uri,
+        prompt: String = "",
+        maxLongEdge: Int = 1024,
+        jpegQuality: Int = 85
+    ): AiGeneratedImage = withContext(Dispatchers.IO) {
+        ensureDefaultGroup()
+        cleanupExpiredTemporary()
+        val id = UUID.randomUUID().toString()
+        val tempFile = File(imageDir, "$id.tmp")
+        val byteCount = runCatching {
+            writeUserImageToTempFile(uri, tempFile, maxLongEdge, jpegQuality)
+        }.onFailure {
+            runCatching { tempFile.delete() }
+        }.getOrThrow()
+        if (byteCount <= 0L) {
+            runCatching { tempFile.delete() }
+            error("Empty image body")
+        }
+        // 用户图片统一压缩为 JPEG
+        val file = File(imageDir, "$id.jpg")
+        if (!tempFile.renameTo(file)) {
+            tempFile.copyTo(file, overwrite = true)
+            tempFile.delete()
+        }
+        val now = System.currentTimeMillis()
+        val image = AiGeneratedImage(
+            id = id,
+            name = promptName(prompt).ifBlank { "用户图片" },
+            prompt = prompt,
+            providerId = "user_input",
+            providerName = "用户上传",
+            model = "user",
+            localPath = file.absolutePath,
+            originalSource = "user-input:${uri.lastPathSegment ?: uri.toString()}".take(500),
+            sourceType = SOURCE_TYPE_CHAT,
+            sourceText = prompt.trim().take(2000),
+            createdAt = now,
+            updatedAt = now
+        )
+        runCatching {
+            appDb.aiGeneratedImageDao.insert(image)
+        }.onFailure {
+            runCatching { file.delete() }
+        }.getOrThrow()
+        image
+    }
+
+    /**
+     * 将 ai-image:// 引用解析为 data URL，供多模态请求体使用。
+     * - 用户上传图片落盘时已是压缩 JPEG，直接 base64 编码
+     * - 若文件过大（>4MB，理论上不应发生），回退为解码后重新压缩
+     *
+     * @return data:image/...;base64,... 或 null（文件缺失/读取失败）
+     */
+    fun resolveImageDataUrl(src: String?): String? {
+        val file = resolveImageFile(src) ?: return null
+        val bytes = runCatching { file.readBytes() }.getOrNull() ?: return null
+        if (bytes.size <= MAX_DATA_URL_INLINE_BYTES) {
+            val mime = when (file.extension.lowercase()) {
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                "gif" -> "image/gif"
+                else -> "image/jpeg"
+            }
+            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            return "data:$mime;base64,$base64"
+        }
+        // 兜底：超大文件重新解码压缩
+        val bitmap = runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull() ?: return null
+        return bitmap.toCompressedDataUrl().also { bitmap.recycle() }
+    }
+
     fun listImages(filter: GalleryFilter): List<AiGeneratedImage> {
         ensureDefaultGroup()
         return when (filter) {
@@ -295,6 +381,67 @@ object AiImageGalleryManager {
             }
         }
         return copied
+    }
+
+    /**
+     * 将用户选择的图片 Uri 解码、缩放（长边 <= maxLongEdge）、JPEG 压缩写入临时文件。
+     * 解码时先采样到目标尺寸 2 倍以内以防 OOM，再精确缩放。
+     */
+    private fun writeUserImageToTempFile(
+        uri: Uri,
+        target: File,
+        maxLongEdge: Int,
+        jpegQuality: Int
+    ): Long {
+        val resolver = appCtx.contentResolver
+        val source = decodeUriSampled(resolver, uri, maxLongEdge)
+            ?: error("Failed to decode image: $uri")
+        val originalLongEdge = maxOf(source.width, source.height)
+        val resized = if (originalLongEdge > maxLongEdge && source.width > 0 && source.height > 0) {
+            val scale = maxLongEdge.toFloat() / originalLongEdge.toFloat()
+            val newWidth = (source.width * scale).toInt().coerceAtLeast(1)
+            val newHeight = (source.height * scale).toInt().coerceAtLeast(1)
+            source.resizeAndRecycle(newWidth, newHeight)
+        } else {
+            source
+        }
+        var written = 0L
+        target.outputStream().use { out ->
+            if (resized.compress(Bitmap.CompressFormat.JPEG, jpegQuality, out)) {
+                written = target.length()
+            }
+        }
+        if (resized !== source) {
+            resized.recycle()
+        }
+        source.recycle()
+        return written
+    }
+
+    private fun decodeUriSampled(
+        resolver: ContentResolver,
+        uri: Uri,
+        maxLongEdge: Int
+    ): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        runCatching {
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            // 部分来源无法通过 bounds 解码，直接全量解码
+            return runCatching {
+                resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+            }.getOrNull()
+        }
+        val longEdge = maxOf(bounds.outWidth, bounds.outHeight)
+        var sample = 1
+        while (longEdge / sample > maxLongEdge * 2) {
+            sample *= 2
+        }
+        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+        return runCatching {
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
+        }.getOrNull()
     }
 
     private fun readHeaderBytes(file: File): ByteArray {

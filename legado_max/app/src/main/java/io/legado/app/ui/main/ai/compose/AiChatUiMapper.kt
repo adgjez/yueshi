@@ -14,7 +14,8 @@ sealed class AiChatUiItem {
     @Immutable
     data class User(
         override val id: String,
-        val content: String
+        val content: String,
+        val images: List<String> = emptyList()
     ) : AiChatUiItem()
 
     @Immutable
@@ -213,7 +214,8 @@ fun buildAiChatUiItems(
                     flushAssistant()
                     result += AiChatUiItem.User(
                         id = message.id,
-                        content = message.content
+                        content = message.content,
+                        images = message.imageRefs
                     )
                 }
                 AiChatMessage.Role.ASSISTANT -> {
