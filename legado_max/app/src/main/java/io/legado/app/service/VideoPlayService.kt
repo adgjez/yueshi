@@ -500,12 +500,77 @@ class VideoPlayService : BaseService() {
         }
     }
 
+    /**
+     * 悬浮窗右下角拖拽手柄：单手拖动调整小窗大小，保持视频宽高比。
+     * 不持久化（不同视频尺寸不同，持久化反而会扭曲）。
+     */
+    inner class FloatingResizeListener : OnTouchListener {
+        private var initialRawX = 0f
+        private var initialWidth = 0
+        private var aspectRatio = 0f
+
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouch(v: View, event: MotionEvent): Boolean {
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialRawX = event.rawX
+                    initialWidth = params.width
+                    val videoWidth = playerView.currentVideoWidth
+                    val videoHeight = playerView.currentVideoHeight
+                    aspectRatio = if (videoWidth > 0 && videoHeight > 0) {
+                        videoHeight.toFloat() / videoWidth.toFloat()
+                    } else {
+                        9f / 16f
+                    }
+                    cancelAnimator()
+                    playerView.isResizing = true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaX = event.rawX - initialRawX
+                    val screenWidth = resources.displayMetrics.widthPixels
+                    val screenHeight = resources.displayMetrics.heightPixels
+                    val minWidth = (screenWidth * 0.3f).toInt()
+                    val maxWidth = screenWidth
+                    val maxHeight = (screenHeight * 0.85f).toInt()
+                    var newWidth = (initialWidth + deltaX).toInt()
+                    if (newWidth < minWidth) newWidth = minWidth
+                    if (newWidth > maxWidth) newWidth = maxWidth
+                    val ratio = if (aspectRatio > 0) aspectRatio else 9f / 16f
+                    var newHeight = (newWidth * ratio).toInt()
+                    // 若高度超限，按高度反推宽度，保持视频宽高比不被压扁
+                    if (newHeight > maxHeight) {
+                        newHeight = maxHeight
+                        newWidth = (newHeight / ratio).toInt()
+                    }
+                    if (params.width != newWidth || params.height != newHeight) {
+                        params.width = newWidth
+                        params.height = newHeight
+                        windowManager.updateViewLayout(floatingView, params)
+                    }
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    playerView.isResizing = false
+                    v.performClick()
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    playerView.isResizing = false
+                }
+            }
+            return true
+        }
+    }
+
 
     private fun setupPlayerView() {
         playerView.fullscreenB.setOnClickListener {
             toggleFullScreen()
         }
         playerView.backButton.setOnClickListener { stop() }
+        floatingView.findViewById<View>(R.id.resizeHandle)
+            .setOnTouchListener(FloatingResizeListener())
         if (playerView.isInPlayingState) {
             upMediaMetadata()
             upPlayProgress()

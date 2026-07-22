@@ -64,6 +64,18 @@ object VideoPlay : CoroutineScope by MainScope(){
     private const val VIDEO_POS_SAVE_TIME = 60 * 60 * 24 * 20 //20天
     private var needClearTemp = true //需要清理缓存
     private const val VIDEO_TEMP_PATH = "video_temp"
+
+    /**
+     * 播放错误自动重连配置。
+     * 直播/点播统一处理：网络抖动、流短暂中断时 ExoPlayer 会报 onError，
+     * 原实现只保存进度不重试，用户需手动重启。这里在错误后自动重连，
+     * 间隔指数退避（3s,6s,12s,24s,30s），成功播放（onPrepared）后重置计数。
+     */
+    private const val MAX_RETRY = 5
+    private const val RETRY_BASE_DELAY_MS = 3000L
+    private const val RETRY_MAX_DELAY_MS = 30_000L
+    private var retryCount = 0
+    private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
     private val videoTempFile by lazy { File(FileUtils.getCachePath(), VIDEO_TEMP_PATH) }
 
     const val VIDEO_PREF_NAME = "video_config"
@@ -250,10 +262,41 @@ object VideoPlay : CoroutineScope by MainScope(){
     }
 
     /**
+     * 播放错误后自动重连。指数退避：3s,6s,12s,24s,30s，最多 5 次。
+     * 成功播放（onPrepared）后调 [resetRetryCount] 重置。
+     */
+    fun handlePlayError(player: StandardGSYVideoPlayer) {
+        if (retryCount >= MAX_RETRY) {
+            AppLog.put("视频播放重连失败，已达最大重试次数 $MAX_RETRY 次")
+            retryCount = 0
+            return
+        }
+        retryCount++
+        val delay = (RETRY_BASE_DELAY_MS * (1 shl (retryCount - 1)))
+            .coerceAtMost(RETRY_MAX_DELAY_MS)
+        AppLog.put("视频播放错误，${delay}ms 后重连（第 $retryCount/$MAX_RETRY 次）")
+        mainHandler.postDelayed({
+            try {
+                if (videoManager.listener() != null) {
+                    player.startPlayLogic()
+                }
+            } catch (e: Exception) {
+                AppLog.put("视频重连异常", e)
+            }
+        }, delay)
+    }
+
+    fun resetRetryCount() {
+        retryCount = 0
+    }
+
+    /**
      * 开始播放
      */
     fun startPlay(player: StandardGSYVideoPlayer) {
         if (source == null) return
+        // 新视频/切集时重置重试计数，避免上一集的重试状态影响本次
+        resetRetryCount()
         danmakuStr = null
         danmakuFile = null
         val player = player.getCurrentPlayer()
