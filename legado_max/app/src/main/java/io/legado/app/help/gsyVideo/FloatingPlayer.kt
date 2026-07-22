@@ -21,6 +21,11 @@ class FloatingPlayer : StandardGSYVideoPlayer {
 
     lateinit var fullscreenB: ImageView
     private lateinit var resizeHandle: ImageView
+    /**
+     * 正在拖拽 resize 手柄时为 true，hideAllWidget 期间不隐藏手柄，
+     * 避免拖动中途控制条自动隐藏导致手柄闪退。
+     */
+    var isResizing = false
 
     override fun init(context: Context?) {
         if (activityContext != null) {
@@ -123,7 +128,8 @@ class FloatingPlayer : StandardGSYVideoPlayer {
 
     override fun hideAllWidget() {
         super.hideAllWidget()
-        if (this::resizeHandle.isInitialized) {
+        // 拖拽中保持手柄可见，避免控制条自动隐藏打断 resize
+        if (this::resizeHandle.isInitialized && !isResizing) {
             resizeHandle.visibility = INVISIBLE
         }
     }

@@ -523,6 +523,7 @@ class VideoPlayService : BaseService() {
                         9f / 16f
                     }
                     cancelAnimator()
+                    playerView.isResizing = true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
