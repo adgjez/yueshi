@@ -7,6 +7,7 @@ import io.legado.app.help.http.HttpCaptureHelper
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
@@ -119,7 +120,10 @@ object AiReadingNetworkTool {
                 put("truncated", body.length > maxChars)
                 put("body", body.take(maxChars))
             }.toString()
-        }.getOrElse { error(it.localizedMessage ?: it.javaClass.simpleName) }
+        }.getOrElse {
+            if (it is CancellationException) throw it
+            error(it.localizedMessage ?: it.javaClass.simpleName)
+        }
     }
 
     private suspend fun readingWebView(args: JSONObject?): String = coroutineScope {
@@ -154,7 +158,10 @@ object AiReadingNetworkTool {
                 put("truncated", body.length > maxChars)
                 put("body", body.take(maxChars))
             }.toString()
-        }.getOrElse { error(it.localizedMessage ?: it.javaClass.simpleName) }
+        }.getOrElse {
+            if (it is CancellationException) throw it
+            error(it.localizedMessage ?: it.javaClass.simpleName)
+        }
     }
 
     private suspend fun captureWebRequests(args: JSONObject?): String = coroutineScope {
@@ -181,7 +188,10 @@ object AiReadingNetworkTool {
                     coroutineContext = coroutineContext
                 )
             ).toString()
-        }.getOrElse { error(it.localizedMessage ?: it.javaClass.simpleName) }
+        }.getOrElse {
+            if (it is CancellationException) throw it
+            error(it.localizedMessage ?: it.javaClass.simpleName)
+        }
     }
 
     private fun resolveSource(args: JSONObject?): BookSource? {

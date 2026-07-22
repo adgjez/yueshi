@@ -23,6 +23,7 @@ import io.legado.app.data.ai.AiChatMessage
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.postEvent
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -1474,6 +1475,7 @@ object AiReadAloudRoleService {
                             failed = false
                         )
                     }.getOrElse {
+                        if (it is CancellationException) throw it
                         AppLog.putDebug("多角色分配批次失败，将只重试该批次：batch=${batch.index}", it)
                         UnitAssignmentBatchRunResult(
                             batch = batch,
@@ -2825,6 +2827,7 @@ object AiReadAloudRoleService {
                         )
                     )
                 }.onFailure {
+                    if (it is CancellationException) throw it
                     AppLog.put("自动生成角色头像失败\n${it.localizedMessage}", it, false)
                 }
             }

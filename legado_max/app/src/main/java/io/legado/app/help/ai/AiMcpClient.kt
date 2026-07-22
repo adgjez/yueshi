@@ -11,6 +11,7 @@ import org.json.JSONObject
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -85,6 +86,7 @@ object AiMcpClient {
                         buildResolvedTool(server, alias, descriptor)
                     }
                 }.getOrElse {
+                    if (it is CancellationException) throw it
                     sessionMap.remove(server.id)
                     emptyList()
                 }
