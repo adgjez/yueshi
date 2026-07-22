@@ -550,7 +550,10 @@ class VideoPlayService : BaseService() {
                     }
                 }
 
-                MotionEvent.ACTION_UP -> v.performClick()
+                MotionEvent.ACTION_UP -> {
+                    playerView.isResizing = false
+                    v.performClick()
+                }
             }
             return true
         }

@@ -127,9 +127,10 @@ class FloatingPlayer : StandardGSYVideoPlayer {
     }
 
     override fun hideAllWidget() {
+        // 拖拽中保持控制条（全屏、关闭、resize 手柄）可见，避免自动隐藏打断 resize
+        if (isResizing) return
         super.hideAllWidget()
-        // 拖拽中保持手柄可见，避免控制条自动隐藏打断 resize
-        if (this::resizeHandle.isInitialized && !isResizing) {
+        if (this::resizeHandle.isInitialized) {
             resizeHandle.visibility = INVISIBLE
         }
     }
