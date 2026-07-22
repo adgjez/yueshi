@@ -1356,6 +1356,13 @@ object AiChatService {
                 })
             }
         }
+        // 暴露 ai-image:// 引用 handle 给模型，供 edit_image 工具引用
+        imageRefs.joinToString(", ").takeIf { it.isNotBlank() }?.let { refsText ->
+            array.put(JSONObject().apply {
+                put("type", "text")
+                put("text", "图片引用：$refsText")
+            })
+        }
         return array.takeIf { it.length() > 0 }
     }
 
