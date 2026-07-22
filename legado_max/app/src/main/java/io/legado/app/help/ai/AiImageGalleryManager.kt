@@ -9,6 +9,7 @@ import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
 import io.legado.app.data.ai.AiImageProviderConfig
 import io.legado.app.utils.decodeBase64DataUrlBytes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -64,6 +65,7 @@ object AiImageGalleryManager {
         val byteCount = runCatching {
             writeImageToTempFile(imageSource, provider, tempFile)
         }.onFailure { throwable ->
+            if (throwable is CancellationException) throw throwable
             AppLog.put(
                 "AI 图像：写入临时文件失败 id=$id",
                 throwable

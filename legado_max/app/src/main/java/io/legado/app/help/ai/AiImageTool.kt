@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -68,6 +69,7 @@ object AiImageTool {
                                 .put("model", image.model)
                                 .toString()
                         }.getOrElse {
+                            if (it is CancellationException) throw it
                             JSONObject()
                                 .put("ok", false)
                                 .put("success", false)

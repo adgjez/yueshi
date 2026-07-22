@@ -532,6 +532,7 @@ object AiBookCharacterTool {
                     else -> errorJsonObject("unsupported action: $action")
                 }
             }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
                 errorJsonObject(throwable.localizedMessage ?: throwable.javaClass.simpleName)
             }
             results.put(JSONObject().apply {

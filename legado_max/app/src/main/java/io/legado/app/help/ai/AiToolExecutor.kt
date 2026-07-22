@@ -1,6 +1,7 @@
 package io.legado.app.help.ai
 
 import io.legado.app.help.config.AppConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
@@ -88,6 +89,11 @@ internal object AiToolExecutor {
             }
             throw lastError ?: IllegalStateException("Tool failed")
         }.getOrElse { throwable ->
+            // TimeoutCancellationException 是 withTimeout 内部超时，应转成超时错误；
+            // 其他 CancellationException（用户取消）必须透传，否则破坏结构化并发
+            if (throwable is CancellationException && throwable !is TimeoutCancellationException) {
+                throw throwable
+            }
             JSONObject().apply {
                 put("ok", false)
                 put(
