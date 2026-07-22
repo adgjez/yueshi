@@ -20,6 +20,12 @@ class FloatingPlayer : StandardGSYVideoPlayer {
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
 
     lateinit var fullscreenB: ImageView
+    private lateinit var resizeHandle: ImageView
+    /**
+     * 正在拖拽 resize 手柄时为 true，hideAllWidget 期间不隐藏手柄，
+     * 避免拖动中途控制条自动隐藏导致手柄闪退。
+     */
+    var isResizing = false
 
     override fun init(context: Context?) {
         if (activityContext != null) {
@@ -38,6 +44,7 @@ class FloatingPlayer : StandardGSYVideoPlayer {
         mBackButton = findViewById(R.id.back)
         mBottomProgressBar = findViewById(R.id.bottom_progressbar)
         fullscreenB = findViewById(R.id.fullscreenB)
+        resizeHandle = findViewById(R.id.resizeHandle)
     }
 
     override fun getLayoutId(): Int {
@@ -109,6 +116,22 @@ class FloatingPlayer : StandardGSYVideoPlayer {
             resolveUIState(mCurrentState)
         } else {
             hideAllWidget()
+        }
+    }
+
+    override fun resolveUIState(state: Int) {
+        super.resolveUIState(state)
+        if (this::resizeHandle.isInitialized) {
+            resizeHandle.visibility = VISIBLE
+        }
+    }
+
+    override fun hideAllWidget() {
+        // 拖拽中保持控制条（全屏、关闭、resize 手柄）可见，避免自动隐藏打断 resize
+        if (isResizing) return
+        super.hideAllWidget()
+        if (this::resizeHandle.isInitialized) {
+            resizeHandle.visibility = INVISIBLE
         }
     }
 
