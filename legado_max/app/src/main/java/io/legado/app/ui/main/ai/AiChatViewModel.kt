@@ -941,35 +941,51 @@ class AiChatViewModel : ViewModel() {
     }
 
     private fun saveCurrentSession() {
+        // 先在调用线程快照所有需要的数据，避免 IO 协程访问非 volatile 实例字段读到 stale 值。
+        // messages 是 CopyOnWriteArrayList，filterNot/map 读取安全；snapshot 后只操作局部变量。
+        val sessionId = currentSessionId
+        val companionId = currentCompanionId
         val snapshot = messages.filterNot { it.pending }
             .map { sanitizeMessageForStorage(it) }
             .filter { it.content.isNotBlank() }
-        val history = AppConfig.aiChatSessionList.toMutableList()
-        val index = history.indexOfFirst {
-            it.id == currentSessionId && it.companionId == currentCompanionId
-        }
-        if (snapshot.isEmpty()) {
-            if (index >= 0) {
-                history.removeAt(index)
-                AppConfig.aiChatSessionList = history
+        val title = if (snapshot.isEmpty()) "" else resolveSessionTitle(snapshot)
+        val updatedAt = System.currentTimeMillis()
+
+        // GSON 序列化整个会话列表 + SP 写入是 CPU/IO 密集操作，放 IO 协程执行，避免阻塞主线程。
+        // contextSummary 在协程内从 history 读取（而非主线程提前快照）：同一请求链中
+        // saveContextSummary（同步）先于 publish -> saveCurrentSession 执行，launch 调度到
+        // IO 线程时其写入已对 SP 内存缓存可见，协程内读能拿到最新 summary。
+        requestScope.launch {
+            val history = AppConfig.aiChatSessionList.toMutableList()
+            val index = history.indexOfFirst {
+                it.id == sessionId && it.companionId == companionId
             }
-            return
+            if (snapshot.isEmpty()) {
+                if (index >= 0) {
+                    history.removeAt(index)
+                    AppConfig.aiChatSessionList = history
+                }
+                return@launch
+            }
+            val session = AiChatSession(
+                id = sessionId,
+                title = title,
+                companionId = companionId,
+                updatedAt = updatedAt,
+                messages = snapshot,
+                // 用快照的 sessionId/companionId 查询（而非实例字段），避免读到 stale 值。
+                contextSummary = history.firstOrNull {
+                    it.id == sessionId && it.companionId == companionId
+                }?.contextSummary
+            )
+            if (index >= 0) {
+                history[index] = session
+            } else {
+                history.add(0, session)
+            }
+            AppConfig.aiChatSessionList = history.sortedByDescending { it.updatedAt }
+            AppConfig.aiCurrentChatSessionId = sessionId
         }
-        val session = AiChatSession(
-            id = currentSessionId,
-            title = resolveSessionTitle(snapshot),
-            companionId = currentCompanionId,
-            updatedAt = System.currentTimeMillis(),
-            messages = snapshot,
-            contextSummary = currentSessionSummary()
-        )
-        if (index >= 0) {
-            history[index] = session
-        } else {
-            history.add(0, session)
-        }
-        AppConfig.aiChatSessionList = history.sortedByDescending { it.updatedAt }
-        AppConfig.aiCurrentChatSessionId = currentSessionId
     }
 
     private fun sanitizeMessageForStorage(message: AiChatMessage): AiChatMessage {
