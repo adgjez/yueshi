@@ -142,6 +142,12 @@ class FloatingPlayer : StandardGSYVideoPlayer {
         super.onError(what, extra)
         VideoPlay.saveRead()
         mSeekOnStart = VideoPlay.durChapterPos.toLong()
+        VideoPlay.handlePlayError(this)
+    }
+
+    override fun onPrepared() {
+        super.onPrepared()
+        VideoPlay.resetRetryCount()
     }
     override fun getCurrentPlayer(): FloatingPlayer {
         return this
