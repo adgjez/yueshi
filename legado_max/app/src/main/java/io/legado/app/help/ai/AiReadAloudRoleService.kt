@@ -657,6 +657,7 @@ object AiReadAloudRoleService {
             return EnsureResult(AiReadAloudRoleState.STATUS_RUNNING, message = "分配角色中", cacheKey = cacheKey)
         }
         val now = System.currentTimeMillis()
+        try {
         keepAliveId = AiTaskKeepAlive.retain(
             title = stageMessage(stage, "分配角色中"),
             content = "${currentBook.name} · ${currentChapter.chapter.title}",
@@ -693,7 +694,6 @@ object AiReadAloudRoleService {
                 updatedAt = now
             )
         )
-        try {
             val preprocess = ReadAloudRolePreprocessor.process(cleanParagraphs)
             val result = requestBatchedUnitAssignments(
                 book = currentBook,

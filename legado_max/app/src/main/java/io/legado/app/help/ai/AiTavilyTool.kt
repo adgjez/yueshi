@@ -156,9 +156,10 @@ object AiTavilyTool {
         if (body.isBlank()) return ""
         return runCatching {
             val root = JSONObject(body)
-            root.optJSONObject("error")?.optString("message")
-                ?: root.optString("message")
-                ?: root.optString("detail")
+            root.optJSONObject("error")?.optString("message")?.takeIf { it.isNotBlank() }
+                ?: root.optString("message").takeIf { it.isNotBlank() }
+                ?: root.optString("detail").takeIf { it.isNotBlank() }
+                ?: ""
         }.getOrDefault("")
     }
 

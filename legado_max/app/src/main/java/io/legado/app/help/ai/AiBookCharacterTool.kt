@@ -330,7 +330,7 @@ object AiBookCharacterTool {
     }
 
     private suspend fun listSpeechCatalogs(args: JSONObject?): String = withContext(IO) {
-        val includeEmpty = args?.optBoolean("includeEmpty", true) ?: true
+        val includeEmpty = args?.optBoolean("includeEmpty", false) ?: false
         val engines = appDb.httpTTSDao.all.mapNotNull { httpTts ->
             val speakerGroups = SpeechVoiceCatalogParser.parseSpeakerGroups(httpTts.speakersJson)
             val emotionGroups = SpeechVoiceCatalogParser.parseEmotionGroups(httpTts.emotionsJson)
