@@ -11,7 +11,7 @@ data class AiResolvedTool(
 
 object AiToolRegistry {
 
-    private const val TOOL_SETTINGS_VERSION = 17
+    private const val TOOL_SETTINGS_VERSION = 18
     private val version2AddedDefaultTools = setOf(
         "list_speech_catalogs",
         "assign_character_speech_route",
@@ -84,7 +84,7 @@ object AiToolRegistry {
         "workspace_read_lines",
         "workspace_diff_file"
     )
-    private val version16AddedDefaultTools = setOf(
+    private val version18AddedDefaultTools = setOf(
         "edit_image"
     )
 
@@ -240,6 +240,7 @@ object AiToolRegistry {
         "capture_web_requests" to "抓包网络请求",
         "search_web_tavily" to "联网搜索",
         "generate_image" to "生成图片",
+        "edit_image" to "编辑图片",
         "list_book_characters" to "读取角色资料",
         "upsert_book_character" to "新增或更新角色",
         "delete_book_character" to "删除角色",
@@ -317,6 +318,7 @@ object AiToolRegistry {
         "capture_web_requests" to "阅读网络",
         "search_web_tavily" to "联网搜索",
         "generate_image" to "AI 生图",
+        "edit_image" to "AI 生图",
         "list_book_characters" to "角色资料",
         "upsert_book_character" to "角色资料",
         "delete_book_character" to "角色资料",
@@ -456,7 +458,7 @@ object AiToolRegistry {
                 if (AppConfig.aiEnabledToolNamesVersion < 13) addAll(version13AddedDefaultTools)
                 if (AppConfig.aiEnabledToolNamesVersion < 14) addAll(version14AddedDefaultTools)
                 if (AppConfig.aiEnabledToolNamesVersion < 15) addAll(version15AddedDefaultTools)
-                if (AppConfig.aiEnabledToolNamesVersion < 16) addAll(version16AddedDefaultTools)
+                if (AppConfig.aiEnabledToolNamesVersion < 18) addAll(version18AddedDefaultTools)
             }
             val migrated = (stored.ifEmpty { defaultEnabledTools } + additions)
                 .minus(if (AppConfig.aiEnabledToolNamesVersion < 12) version12RemovedDefaultTools else emptySet())
