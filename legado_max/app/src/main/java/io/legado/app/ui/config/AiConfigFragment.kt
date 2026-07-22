@@ -6,6 +6,7 @@ import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.help.ai.AiHttpClient
+import io.legado.app.help.ai.AiMcpClient
 import io.legado.app.help.ai.AiToolRegistry
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.newCallResponse
@@ -617,6 +618,7 @@ class AiConfigFragment : ComposeSettingFragment() {
             message = getString(R.string.ai_remove_mcp_server_confirm),
             onPositive = {
                 AppConfig.aiMcpServerList = AppConfig.aiMcpServerList.filterNot { it.id == server.id }
+                AiMcpClient.invalidate(server.id)
                 refreshUi()
                 toastOnUi(R.string.ai_mcp_server_removed)
             }
