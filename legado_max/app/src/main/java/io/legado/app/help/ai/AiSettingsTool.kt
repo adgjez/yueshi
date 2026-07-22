@@ -179,6 +179,7 @@ object AiSettingsTool {
     private fun setSettingsBatch(arguments: JSONObject?): String {
         if (arguments == null) return jsonError("missing arguments")
         val items = arguments.optJSONArray("items") ?: return jsonError("missing items")
+        if (items.length() == 0) return jsonError("items is empty")
         val results = JSONArray()
         var successCount = 0
         for (index in 0 until items.length()) {

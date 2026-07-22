@@ -404,7 +404,7 @@ object AiMcpClient {
         index: Int,
         usedNames: Collection<String>
     ): String {
-        val serverSlug = slug(server.name).take(16).ifBlank { "server" }
+        val serverSlug = slug(server.id).take(16).ifBlank { "server" }
         val toolSlug = slug(toolName).take(32).ifBlank { "tool" }
         val base = "mcp_${serverSlug}_${toolSlug}"
         var candidate = base.take(64)
