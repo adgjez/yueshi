@@ -23,6 +23,10 @@ object AiImageTool {
                                 put("type", "string")
                                 put("description", "Optional image provider id. Use only when user explicitly selects an image model; otherwise omit it.")
                             })
+                            put("size", JSONObject().apply {
+                                put("type", "string")
+                                put("description", "Optional. Image size as WIDTHxHEIGHT. Size档位(1K/2K/3K/4K) × ratio → exact pixels:\n1:1: 1024x1024 / 2048x2048 / 3072x3072 / 4096x4096\n3:4: 864x1152 / 1728x2304 / 2592x3456 / 3456x4608\n4:3: 1152x864 / 2304x1728 / 3456x2592 / 4608x3456\n16:9: 1312x736 / 2624x1472 / 3936x2208 / 5248x2944\n9:16: 736x1312 / 1472x2624 / 2208x3936 / 2944x5248\n2:3: 832x1248 / 1664x2496 / 2496x3744 / 3328x4992\n3:2: 1248x832 / 2496x1664 / 3744x2496 / 4992x3328\n21:9: 1568x672 / 3136x1344 / 4704x2016 / 6272x2688\nIf omitted, provider default is used. Unsupported sizes may be mapped by the server.")
+                            })
                         })
                         put("required", JSONArray().put("prompt"))
                     })
@@ -34,6 +38,7 @@ object AiImageTool {
                     JSONObject().put("ok", false).put("success", false).put("error", "prompt is empty").toString()
                 } else {
                     val providerId = args?.optString("providerId").orEmpty().trim()
+                    val size = args?.optString("size").orEmpty().trim().takeIf { it.isNotBlank() }
                     val provider = if (providerId.isBlank()) {
                         null
                     } else {
@@ -54,7 +59,8 @@ object AiImageTool {
                                 metadata = AiImageGalleryManager.ImageMetadata(
                                     sourceType = AiImageGalleryManager.SOURCE_TYPE_CHAT,
                                     sourceText = prompt
-                                )
+                                ),
+                                size = size
                             )
                             JSONObject()
                                 .put("ok", true)
