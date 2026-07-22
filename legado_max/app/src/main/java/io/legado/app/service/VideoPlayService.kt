@@ -554,6 +554,10 @@ class VideoPlayService : BaseService() {
                     playerView.isResizing = false
                     v.performClick()
                 }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    playerView.isResizing = false
+                }
             }
             return true
         }
