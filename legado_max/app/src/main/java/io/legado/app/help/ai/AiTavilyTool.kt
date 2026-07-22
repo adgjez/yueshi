@@ -159,6 +159,7 @@ object AiTavilyTool {
             root.optJSONObject("error")?.optString("message")?.takeIf { it.isNotBlank() }
                 ?: root.optString("message").takeIf { it.isNotBlank() }
                 ?: root.optString("detail").takeIf { it.isNotBlank() }
+                ?: ""
         }.getOrDefault("")
     }
 
