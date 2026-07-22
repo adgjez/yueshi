@@ -60,7 +60,7 @@ interface AiAgentDao {
         updatedAt: Long = System.currentTimeMillis()
     )
 
-    @Query("UPDATE ai_agent_jobs SET status = :status, checkpointJson = :checkpointJson, leaseUntil = :leaseUntil, updatedAt = :updatedAt WHERE jobId = :jobId")
+    @Query("UPDATE ai_agent_jobs SET status = :status, checkpointJson = :checkpointJson, leaseUntil = :leaseUntil, updatedAt = :updatedAt WHERE jobId = :jobId AND status = 'running'")
     fun updateJobCheckpoint(
         jobId: String,
         status: String,

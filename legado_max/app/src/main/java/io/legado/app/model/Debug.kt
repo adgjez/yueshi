@@ -28,8 +28,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.sync.Mutex
 
 object Debug {
+    /** AI 工具调试用的互斥锁，串行化并发 debugBookSource 调用，避免 Debug 单例共享状态被并发覆盖 */
+    val debugMutex = Mutex()
     var callback: Callback? = null
     private var debugSource: String? = null
     private val tasks: CompositeCoroutine = CompositeCoroutine()

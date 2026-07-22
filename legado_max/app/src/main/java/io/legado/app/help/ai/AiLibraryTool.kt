@@ -21,7 +21,7 @@ object AiLibraryTool {
     private const val TOOL_SEARCH_BOOK_SOURCE = "search_book_source"
     private const val DEFAULT_LIMIT = 8
     private const val MAX_LIMIT = 20
-    private val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private fun timeFormat() = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
     fun resolvedTools(): List<AiResolvedTool> {
         return listOf(
@@ -429,7 +429,7 @@ object AiLibraryTool {
 
     private fun formatTime(time: Long): String {
         if (time <= 0L) return ""
-        return timeFormat.format(Date(time))
+        return timeFormat().format(Date(time))
     }
 
     private fun formatDuration(millis: Long): String {

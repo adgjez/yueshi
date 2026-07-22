@@ -1,6 +1,7 @@
 package io.legado.app.help.ai
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.withLock
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.model.Debug
@@ -380,12 +381,14 @@ object AiBookSourceTool {
             }
         }
         val debugScope = this
-        val state = Debug.withDebugSource(source.bookSourceUrl, callback) {
-            try {
-                Debug.startDebug(debugScope, source, key)
-                withTimeoutOrNull(timeoutMs) { finished.await() }
-            } finally {
-                Debug.cancelDebug()
+        val state = Debug.debugMutex.withLock {
+            Debug.withDebugSource(source.bookSourceUrl, callback) {
+                try {
+                    Debug.startDebug(debugScope, source, key)
+                    withTimeoutOrNull(timeoutMs) { finished.await() }
+                } finally {
+                    Debug.cancelDebug()
+                }
             }
         }
         ok().apply {
