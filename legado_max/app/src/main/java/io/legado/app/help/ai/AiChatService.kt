@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import kotlinx.coroutines.CancellationException
 import io.legado.app.constant.AppLog
 import io.legado.app.data.entities.AiAgentTrace
 import io.legado.app.data.appDb
@@ -194,6 +195,7 @@ object AiChatService {
                     modelConfig = endpoint.modelConfig
                 )
             } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
                 lastThrowable = throwable
                 val canTryFallback = endpointIndex < endpoints.lastIndex && throwable.isAiFastFallbackCandidate()
                 if (!canTryFallback) {
@@ -493,6 +495,7 @@ object AiChatService {
                 usage = totalUsage
             )
         }.getOrElse { throwable ->
+            if (throwable is CancellationException) throw throwable
             AppLog.put(
                 "AI 工具循环执行失败",
                 throwable

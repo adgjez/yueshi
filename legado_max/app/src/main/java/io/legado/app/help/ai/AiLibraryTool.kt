@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import kotlinx.coroutines.CancellationException
 import io.legado.app.constant.BookSourceType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
@@ -270,6 +271,7 @@ object AiLibraryTool {
                     })
                 }
             }.onFailure { throwable ->
+                if (throwable is CancellationException) throw throwable
                 errors.put(JSONObject().apply {
                     put("source", source.bookSourceName)
                     put("error", throwable.localizedMessage ?: throwable.javaClass.simpleName)

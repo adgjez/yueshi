@@ -1,5 +1,6 @@
 package io.legado.app.help.ai
 
+import kotlinx.coroutines.CancellationException
 import io.legado.app.R
 import io.legado.app.constant.AppLog
 import io.legado.app.data.entities.AiAgentTrace
@@ -334,6 +335,7 @@ internal object AiAgentRuntime {
             val allowed = runCatching {
                 toolOptions.riskConfirmation(toolCall.name, toolCall.arguments, toolRisk)
             }.getOrElse { throwable ->
+                if (throwable is CancellationException) throw throwable
                 AppLog.put(
                     "AI tool risk confirmation failed for ${toolCall.name}: " +
                             (throwable.message ?: throwable.javaClass.simpleName)
