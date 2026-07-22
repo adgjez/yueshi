@@ -8,6 +8,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -46,12 +47,21 @@ object AiMcpClient {
     private val sessionMap = ConcurrentHashMap<String, SessionState>()
     private val toolCache = ConcurrentHashMap<String, CachedTools>()
 
-    // protect initialize-once semantics for ensureSession; ConcurrentHashMap 只保证单操作原子，
-    // read-modify-write（check-then-init）仍需 Mutex 保护避免并发重复 initialize 导致 SSE 连接泄漏。
-    private val sessionMutex = Mutex()
+    // per-server Mutex：避免一个 server 的慢 HTTP 阻塞其他 server。
+    // 同一 server 的 ensureSession / resolveTools 仍串行，保证 check-then-act 原子性。
+    private val serverLocks = ConcurrentHashMap<String, Mutex>()
+    private fun mutexFor(serverId: String): Mutex =
+        serverLocks.computeIfAbsent(serverId) { Mutex() }
 
-    // protect toolCache 的 check-fetch-write 段，避免并发重复远端拉取与缓存抖动。
-    private val toolFetchMutex = Mutex()
+    /**
+     * 删除 server 配置时调用，清理对应的 session/tool 缓存，避免内存残留。
+     * 不删除 serverLocks：若并发 callTool 正持有该 Mutex，删除后 mutexFor 会创建新锁，
+     * 破坏互斥性。serverId 是 UUID 不会复用，残留的空 Mutex 体积可忽略。
+     */
+    fun invalidate(serverId: String) {
+        sessionMap.remove(serverId)
+        toolCache.remove(serverId)
+    }
 
     suspend fun resolveTools(servers: List<AiMcpServerConfig>): List<AiResolvedTool> {
         val result = mutableListOf<AiResolvedTool>()
@@ -69,8 +79,9 @@ object AiMcpClient {
                 return@forEach
             }
             // check-fetch-write 不原子：两个协程都通过缓存检查后会各自远端拉取并写入。
-            // 用 toolFetchMutex 串行化整段，second waiter 进来后 double-check 缓存可直接复用。
-            val tools = toolFetchMutex.withLock {
+            // 用 per-server Mutex 串行化整段，second waiter 进来后 double-check 缓存可直接复用。
+            // 持锁期间调用 listToolsLocked（内部用 ensureSessionLocked，不再重复加锁）。
+            val tools = mutexFor(server.id).withLock {
                 val doubleChecked = toolCache[server.id]
                 if (doubleChecked != null
                     && doubleChecked.fingerprint == fingerprint
@@ -80,7 +91,7 @@ object AiMcpClient {
                 }
                 val fetched = runCatching {
                     val localNames = usedNames.toMutableSet()
-                    listTools(server).mapIndexed { index, descriptor ->
+                    listToolsLocked(server, fingerprint).mapIndexed { index, descriptor ->
                         val alias = buildToolAlias(server, descriptor.name, index, localNames)
                         localNames += alias
                         buildResolvedTool(server, alias, descriptor)
@@ -104,8 +115,22 @@ object AiMcpClient {
         return result
     }
 
-    private suspend fun listTools(server: AiMcpServerConfig): List<McpToolDescriptor> {
-        val session = ensureSession(server)
+    /**
+     * 调用方必须已持有 [mutexFor] 对应的 per-server Mutex，session 在内部通过
+     * [ensureSessionLocked] 获得（不加锁）。
+     */
+    private suspend fun listToolsLocked(
+        server: AiMcpServerConfig,
+        fingerprint: String
+    ): List<McpToolDescriptor> {
+        val session = ensureSessionLocked(server, fingerprint)
+        return listToolsWithSession(server, session)
+    }
+
+    private suspend fun listToolsWithSession(
+        server: AiMcpServerConfig,
+        session: SessionState
+    ): List<McpToolDescriptor> {
         val tools = mutableListOf<McpToolDescriptor>()
         var cursor: String? = null
         do {
@@ -197,51 +222,61 @@ object AiMcpClient {
         val fingerprint = server.fingerprint()
         sessionMap[server.id]?.takeIf { it.configFingerprint == fingerprint }?.let { return it }
         // check-then-initialize 不原子：两个协程都通过 check 后会各自发 initialize，
-        // 一个 session 被另一个覆盖，被覆盖的 SSE 连接泄漏。用 sessionMutex 串行化，
+        // 一个 session 被另一个覆盖，被覆盖的 SSE 连接泄漏。用 per-server Mutex 串行化，
         // second waiter 拿锁后 double-check 直接复用 first 的结果。
-        val session = sessionMutex.withLock {
-            sessionMap[server.id]?.takeIf { it.configFingerprint == fingerprint }?.let { return@withLock it }
-            val requestId = nextRequestId()
-            val initializeBody = jsonRpcRequest(
-                method = "initialize",
-                params = JSONObject().apply {
-                    put("protocolVersion", PROTOCOL_VERSION)
-                    put(
-                        "clientInfo",
-                        JSONObject().apply {
-                            put("name", "Legado")
-                            put("version", BuildConfig.VERSION_NAME)
-                        }
-                    )
-                    put("capabilities", JSONObject())
-                },
-                id = requestId
-            )
-            val response = AiHttpClient.client().newCallResponse {
-                url(server.endpoint)
-                addHeader("Accept", "application/json, text/event-stream")
-                addHeader("Content-Type", "application/json")
-                server.apiKey.trim().takeIf { it.isNotBlank() }?.let {
-                    addHeader("Authorization", "Bearer $it")
-                }
-                postJson(initializeBody.toString())
-            }
-            response.use { rawResponse ->
-                val rpcResponse = readJsonRpcResponse(rawResponse, requestId)
-                val result = rpcResponse.optJSONObject("result") ?: JSONObject()
-                val initialized = SessionState(
-                    sessionId = rawResponse.header(HEADER_SESSION_ID),
-                    protocolVersion = result.optString("protocolVersion").ifBlank { PROTOCOL_VERSION },
-                    configFingerprint = fingerprint
-                )
-                sessionMap[server.id] = initialized
-                toolCache.remove(server.id)
-                initialized
-            }
+        val session = mutexFor(server.id).withLock {
+            ensureSessionLocked(server, fingerprint)
         }
         // notifications/initialized 是 fire-and-forget，不必阻塞其他协程拿锁，放在锁外。
         sendInitializedNotification(server, session)
         return session
+    }
+
+    /**
+     * 调用方必须已持有 [mutexFor] 对应的 per-server Mutex。
+     */
+    private suspend fun ensureSessionLocked(
+        server: AiMcpServerConfig,
+        fingerprint: String
+    ): SessionState {
+        sessionMap[server.id]?.takeIf { it.configFingerprint == fingerprint }?.let { return it }
+        val requestId = nextRequestId()
+        val initializeBody = jsonRpcRequest(
+            method = "initialize",
+            params = JSONObject().apply {
+                put("protocolVersion", PROTOCOL_VERSION)
+                put(
+                    "clientInfo",
+                    JSONObject().apply {
+                        put("name", "Legado")
+                        put("version", BuildConfig.VERSION_NAME)
+                    }
+                )
+                put("capabilities", JSONObject())
+            },
+            id = requestId
+        )
+        val response = AiHttpClient.client().newCallResponse {
+            url(server.endpoint)
+            addHeader("Accept", "application/json, text-event-stream")
+            addHeader("Content-Type", "application/json")
+            server.apiKey.trim().takeIf { it.isNotBlank() }?.let {
+                addHeader("Authorization", "Bearer $it")
+            }
+            postJson(initializeBody.toString())
+        }
+        return response.use { rawResponse ->
+            val rpcResponse = readJsonRpcResponse(rawResponse, requestId)
+            val result = rpcResponse.optJSONObject("result") ?: JSONObject()
+            val initialized = SessionState(
+                sessionId = rawResponse.header(HEADER_SESSION_ID),
+                protocolVersion = result.optString("protocolVersion").ifBlank { PROTOCOL_VERSION },
+                configFingerprint = fingerprint
+            )
+            sessionMap[server.id] = initialized
+            toolCache.remove(server.id)
+            initialized
+        }
     }
 
     private suspend fun sendInitializedNotification(
@@ -288,24 +323,14 @@ object AiMcpClient {
             }.use { rawResponse ->
                 readJsonRpcResponse(rawResponse, requestId)
             }
-        }.recoverCatching {
+        }.getOrElse {
+            if (it is CancellationException) throw it
+            // session 可能已失效，清理缓存让下次 ensureSession 重新初始化。
+            // 不在此处重试，避免持锁调用方嵌套加锁自死锁。
             sessionMap.remove(server.id)
             toolCache.remove(server.id)
-            val freshSession = ensureSession(server)
-            AiHttpClient.client().newCallResponse {
-                url(server.endpoint)
-                addHeader("Accept", "application/json, text/event-stream")
-                addHeader("Content-Type", "application/json")
-                addHeader(HEADER_PROTOCOL_VERSION, freshSession.protocolVersion)
-                freshSession.sessionId?.let { addHeader(HEADER_SESSION_ID, it) }
-                server.apiKey.trim().takeIf { it.isNotBlank() }?.let {
-                    addHeader("Authorization", "Bearer $it")
-                }
-                postJson(body.toString())
-            }.use { rawResponse ->
-                readJsonRpcResponse(rawResponse, requestId)
-            }
-        }.getOrThrow()
+            throw it
+        }
     }
 
     private fun readJsonRpcResponse(response: Response, requestId: String): JSONObject {
@@ -430,7 +455,15 @@ object AiMcpClient {
     }
 
     private fun AiMcpServerConfig.fingerprint(): String {
-        return listOf(id, name.trim(), endpoint.trim(), apiKey.trim(), enabled).joinToString("|")
+        // apiKey 用 SHA-256 hash 参与 fingerprint，避免明文长期驻留 sessionMap/toolCache。
+        val apiKeyHash = sha256Hex(apiKey.trim())
+        return listOf(id, name.trim(), endpoint.trim(), apiKeyHash, enabled).joinToString("|")
+    }
+
+    private fun sha256Hex(input: String): String {
+        if (input.isEmpty()) return ""
+        val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
     private fun jsonRpcRequest(method: String, params: JSONObject, id: String): JSONObject {
