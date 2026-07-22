@@ -1428,7 +1428,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
                 .filter { session ->
                     session.id.isNotBlank() &&
                             session.title.isNotBlank() &&
-                            session.messages.all { it.content.isNotBlank() }
+                            session.messages.all { it.content.isNotBlank() || it.imageRefs.isNotEmpty() }
                 }
                 .map { session ->
                     session.copy(
@@ -1457,7 +1457,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
                 .mapNotNull { session ->
                     val title = session.title.trim()
                     val normalizedMessages = session.messages
-                        .filter { it.content.isNotBlank() }
+                        .filter { it.content.isNotBlank() || it.imageRefs.isNotEmpty() }
                         .map { it.copy(pending = false) }
                     if (session.id.isBlank() || title.isBlank() || normalizedMessages.isEmpty()) {
                         null

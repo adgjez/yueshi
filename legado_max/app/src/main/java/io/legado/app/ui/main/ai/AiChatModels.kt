@@ -34,7 +34,9 @@ data class AiChatMessage(
     val updatedAt: Long = createdAt,
     val variantGroupId: String? = null,
     val variantIndex: Int = 0,
-    val variantSelected: Boolean = true
+    val variantSelected: Boolean = true,
+    // 用户消息附带的图片引用（ai-image://{id}），仅 USER 角色使用。assistant 始终为空。
+    val imageRefs: List<String> = emptyList()
 ) {
     @Keep
     enum class Role {

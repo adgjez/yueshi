@@ -824,12 +824,42 @@ object AiChatService {
             })
             return
         }
-        val content = message.optString("content")
-        if (content.isNotBlank() && content != "null") {
-            input.put(JSONObject().apply {
-                put("role", role.ifBlank { "user" })
-                put("content", content)
-            })
+        val contentArray = message.optJSONArray("content")
+        if (contentArray != null) {
+            // 多模态 chat_completions content 数组 → 转换为 responses input_text/input_image
+            val converted = JSONArray()
+            for (index in 0 until contentArray.length()) {
+                val part = contentArray.optJSONObject(index) ?: continue
+                when (part.optString("type")) {
+                    "text" -> part.optString("text").takeIf { it.isNotBlank() }?.let { text ->
+                        converted.put(JSONObject().apply {
+                            put("type", "input_text")
+                            put("text", text)
+                        })
+                    }
+                    "image_url" -> part.optJSONObject("image_url")?.optString("url")
+                        ?.takeIf { it.isNotBlank() }?.let { url ->
+                            converted.put(JSONObject().apply {
+                                put("type", "input_image")
+                                put("image_url", url)
+                            })
+                        }
+                }
+            }
+            if (converted.length() > 0) {
+                input.put(JSONObject().apply {
+                    put("role", role.ifBlank { "user" })
+                    put("content", converted)
+                })
+            }
+        } else {
+            val content = message.optString("content")
+            if (content.isNotBlank() && content != "null") {
+                input.put(JSONObject().apply {
+                    put("role", role.ifBlank { "user" })
+                    put("content", content)
+                })
+            }
         }
         val toolCalls = message.optJSONArray("tool_calls") ?: return
         for (index in 0 until toolCalls.length()) {
@@ -1286,13 +1316,47 @@ object AiChatService {
                         put("reasoning_content", reasoningContent)
                     }
                 } else {
-                    put("content", stripSearchResultBlocks(message.content))
+                    val visibleText = stripSearchResultBlocks(message.content)
+                    val contentArray = buildUserMultimodalContent(visibleText, message.imageRefs)
+                    if (contentArray != null) {
+                        put("content", contentArray)
+                    } else {
+                        put("content", visibleText)
+                    }
                 }
             }
         }
         insertWorldBookBeforeLastUser(conversation, worldBookContext)
         insertWorldBookByDepth(conversation, worldBookContext)
         return conversation
+    }
+
+    /**
+     * 为带图片的用户消息构造 OpenAI chat_completions 多模态 content 数组。
+     * - 文本非空时放入 {"type":"text","text":...}
+     * 每个 ai-image:// 引用解析为 data URL，放入 {"type":"image_url","image_url":{"url":...}}
+     * - 所有图片解析失败且无文本时返回 null（调用方回退为纯文本 content）
+     */
+    private fun buildUserMultimodalContent(text: String, imageRefs: List<String>): JSONArray? {
+        if (imageRefs.isEmpty()) return null
+        val array = JSONArray()
+        if (text.isNotBlank()) {
+            array.put(JSONObject().apply {
+                put("type", "text")
+                put("text", text)
+            })
+        }
+        imageRefs.forEach { ref ->
+            AiImageGalleryManager.resolveImageDataUrl(ref)?.let { dataUrl ->
+                array.put(JSONObject().apply {
+                    put("type", "image_url")
+                    put("image_url", JSONObject().apply {
+                        put("url", dataUrl)
+                    })
+                })
+            }
+        }
+        return array.takeIf { it.length() > 0 }
     }
 
     private fun buildToolOnlyConversation(

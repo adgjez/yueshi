@@ -1,6 +1,7 @@
 package io.legado.app.ui.main.ai
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import androidx.activity.viewModels
@@ -72,6 +73,7 @@ import io.legado.app.ui.main.ai.compose.aiComposeStyle
 import io.legado.app.ui.book.character.compose.CharacterAvatar
 import io.legado.app.ui.widget.compose.BookCoverImage
 import io.legado.app.ui.widget.image.CoverImageView
+import io.legado.app.utils.SelectMultipleImagesContract
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers
@@ -93,6 +95,10 @@ class AiChatActivity : BaseActivity<ActivityAiChatBinding>(
     private val refreshToken = mutableIntStateOf(0)
     private var characterPickerGroups by mutableStateOf<List<CharacterPickGroup>>(emptyList())
     private var characterPickerVisible by mutableStateOf(false)
+    private val pickImagesLauncher =
+        registerForActivityResult(SelectMultipleImagesContract()) { uris ->
+            handlePickedImages(uris)
+        }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.composeRoot.setViewCompositionStrategy(
@@ -128,7 +134,8 @@ class AiChatActivity : BaseActivity<ActivityAiChatBinding>(
                     onDeleteMessage = ::confirmDeleteMessageFromHere,
                     onRetryMessage = ::dispatchRetryMessage,
                     onSelectAssistantVariant = ::selectAssistantVariant,
-                    onAssistantAvatarLongPress = ::showAgentModeDialog
+                    onAssistantAvatarLongPress = ::showAgentModeDialog,
+                    onPickImage = ::launchImagePicker
                 )
             )
             if (characterPickerVisible) {
@@ -157,8 +164,9 @@ class AiChatActivity : BaseActivity<ActivityAiChatBinding>(
         super.onDestroy()
     }
 
-    private fun dispatchSend(content: String): Boolean {
-        if (content.isBlank() || viewModel.isRequesting) return false
+    private fun dispatchSend(content: String, imageRefs: List<String>): Boolean {
+        if (viewModel.isRequesting) return false
+        if (content.isBlank() && imageRefs.isEmpty()) return false
         val provider = AppConfig.aiCurrentProvider
         if (provider?.baseUrl.isNullOrBlank() || AppConfig.aiCurrentModelConfig == null) {
             toastOnUi(R.string.ai_missing_config)
@@ -168,9 +176,51 @@ class AiChatActivity : BaseActivity<ActivityAiChatBinding>(
             userContent = content.trim(),
             thinkingText = getString(R.string.ai_chat_thinking),
             cancelledText = getString(R.string.ai_chat_cancelled),
-            failureMessage = { getString(R.string.ai_request_failed, it) }
+            failureMessage = { getString(R.string.ai_request_failed, it) },
+            userImageRefs = imageRefs
         )
         return true
+    }
+
+    private fun launchImagePicker() {
+        if (viewModel.isRequesting) return
+        val current = viewModel.pendingImageRefsLiveData.value.orEmpty()
+        val remaining = AiChatViewModel.MAX_USER_IMAGES - current.size
+        if (remaining <= 0) {
+            toastOnUi("最多 ${AiChatViewModel.MAX_USER_IMAGES} 张图片")
+            return
+        }
+        pickImagesLauncher.launch(remaining)
+    }
+
+    private fun handlePickedImages(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        val current = viewModel.pendingImageRefsLiveData.value.orEmpty()
+        val remaining = AiChatViewModel.MAX_USER_IMAGES - current.size
+        if (remaining <= 0) {
+            toastOnUi("最多 ${AiChatViewModel.MAX_USER_IMAGES} 张图片")
+            return
+        }
+        val toSave = uris.take(remaining)
+        if (uris.size > remaining) {
+            toastOnUi("最多 ${AiChatViewModel.MAX_USER_IMAGES} 张图片，已选前 $remaining 张")
+        }
+        lifecycleScope.launch {
+            val refs = withContext(Dispatchers.IO) {
+                toSave.mapNotNull { uri ->
+                    runCatching {
+                        AiImageGalleryManager.imageUri(
+                            AiImageGalleryManager.saveUserInputImage(uri).id
+                        )
+                    }.getOrNull()
+                }
+            }
+            if (refs.isNotEmpty()) {
+                viewModel.addPendingImageRefs(refs)
+            } else {
+                toastOnUi("图片读取失败")
+            }
+        }
     }
 
     private fun cancelCurrentRequest() {

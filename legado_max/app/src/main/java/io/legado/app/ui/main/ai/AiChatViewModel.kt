@@ -1,5 +1,6 @@
 package io.legado.app.ui.main.ai
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import io.legado.app.R
@@ -34,6 +35,10 @@ class AiChatViewModel : ViewModel() {
     var isRequesting = false
         private set
 
+    // 输入区待发送的用户图片引用（ai-image://{id}），单条消息最多 MAX_USER_IMAGES 张
+    private val _pendingImageRefs = MutableLiveData<List<String>>(emptyList())
+    val pendingImageRefsLiveData: LiveData<List<String>> = _pendingImageRefs
+
     private val messages = mutableListOf<AiChatMessage>()
     private var currentCompanionId: String = AppConfig.aiCurrentChatCompanionId
     private var currentSessionId: String = AppConfig.aiCurrentChatSessionId ?: UUID.randomUUID().toString()
@@ -44,6 +49,7 @@ class AiChatViewModel : ViewModel() {
     private var currentAgentMode: AiAgentMode = AppConfig.aiChatAgentMode
 
     companion object {
+        const val MAX_USER_IMAGES = 4
         private val requestScope = CoroutineScope(SupervisorJob() + IO)
         private var activeJob: Job? = null
         private var activeCompanionId: String? = null
@@ -76,6 +82,26 @@ class AiChatViewModel : ViewModel() {
         activeViewModel = this
     }
 
+    fun addPendingImageRefs(refs: List<String>) {
+        if (refs.isEmpty()) return
+        val current = _pendingImageRefs.value.orEmpty()
+        val merged = (current + refs.filter { it.isNotBlank() && it !in current })
+            .take(MAX_USER_IMAGES)
+        if (merged != current) _pendingImageRefs.value = merged
+    }
+
+    fun removePendingImageRef(ref: String) {
+        val current = _pendingImageRefs.value.orEmpty()
+        if (current.isEmpty()) return
+        _pendingImageRefs.value = current - ref
+    }
+
+    fun clearPendingImageRefs() {
+        if (_pendingImageRefs.value.orEmpty().isNotEmpty()) {
+            _pendingImageRefs.value = emptyList()
+        }
+    }
+
     fun append(message: AiChatMessage) {
         messages.add(message)
         publish()
@@ -85,14 +111,16 @@ class AiChatViewModel : ViewModel() {
         userContent: String,
         thinkingText: String,
         cancelledText: String,
-        failureMessage: (String) -> String
+        failureMessage: (String) -> String,
+        userImageRefs: List<String> = emptyList()
     ) {
         startRequestInternal(
             userContent = userContent,
             thinkingText = thinkingText,
             cancelledText = cancelledText,
             failureMessage = failureMessage,
-            retryTarget = null
+            retryTarget = null,
+            userImageRefs = userImageRefs
         )
     }
 
@@ -109,7 +137,8 @@ class AiChatViewModel : ViewModel() {
             thinkingText = thinkingText,
             cancelledText = cancelledText,
             failureMessage = failureMessage,
-            retryTarget = retryTarget
+            retryTarget = retryTarget,
+            userImageRefs = retryTarget.userMessage.imageRefs
         )
         return true
     }
@@ -119,7 +148,8 @@ class AiChatViewModel : ViewModel() {
         thinkingText: String,
         cancelledText: String,
         failureMessage: (String) -> String,
-        retryTarget: RetryTarget?
+        retryTarget: RetryTarget?,
+        userImageRefs: List<String> = emptyList()
     ) {
         if (isRequesting || activeJob?.isActive == true) return
         setRequesting(true)
@@ -137,11 +167,16 @@ class AiChatViewModel : ViewModel() {
         activeVariantIndex = 0
         activeToolMessageIds.clear()
         val requestMessages = if (retryTarget == null) {
-            val userMessage = AiChatMessage(role = AiChatMessage.Role.USER, content = userContent)
+            val userMessage = AiChatMessage(
+                role = AiChatMessage.Role.USER,
+                content = userContent,
+                imageRefs = userImageRefs
+            )
             messages.add(userMessage)
             activeVariantGroupId = replyVariantGroupId(userMessage.id)
             activeVariantIndex = 0
             publish()
+            clearPendingImageRefs()
             snapshotForRequest()
         } else {
             activeVariantGroupId = retryTarget.variantGroupId

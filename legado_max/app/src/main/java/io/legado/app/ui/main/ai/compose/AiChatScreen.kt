@@ -113,7 +113,7 @@ import kotlin.math.abs
 
 @Stable
 data class AiChatScreenActions(
-    val onSend: (String) -> Boolean,
+    val onSend: (String, List<String>) -> Boolean,
     val onStop: () -> Unit,
     val onOpenSettings: () -> Unit,
     val onNewChat: () -> Unit,
@@ -134,7 +134,8 @@ data class AiChatScreenActions(
     val onDeleteMessage: ((String) -> Unit)? = null,
     val onRetryMessage: ((String) -> Unit)? = null,
     val onSelectAssistantVariant: ((String, Int) -> Unit)? = null,
-    val onAssistantAvatarLongPress: (() -> Unit)? = null
+    val onAssistantAvatarLongPress: (() -> Unit)? = null,
+    val onPickImage: (() -> Unit)? = null
 )
 
 @Stable
@@ -225,14 +226,18 @@ fun AiChatRoute(
 ) {
     var messages by remember { mutableStateOf(viewModel.messagesLiveData.value.orEmpty()) }
     var requesting by remember { mutableStateOf(viewModel.isRequesting) }
+    var pendingImageRefs by remember { mutableStateOf(viewModel.pendingImageRefsLiveData.value.orEmpty()) }
     DisposableEffect(viewModel, lifecycleOwner) {
         val messageObserver = Observer<List<AiChatMessage>> { messages = it.orEmpty() }
         val requestingObserver = Observer<Boolean> { requesting = it == true }
+        val pendingImageObserver = Observer<List<String>> { pendingImageRefs = it.orEmpty() }
         viewModel.messagesLiveData.observe(lifecycleOwner, messageObserver)
         viewModel.requestingLiveData.observe(lifecycleOwner, requestingObserver)
+        viewModel.pendingImageRefsLiveData.observe(lifecycleOwner, pendingImageObserver)
         onDispose {
             viewModel.messagesLiveData.removeObserver(messageObserver)
             viewModel.requestingLiveData.removeObserver(requestingObserver)
+            viewModel.pendingImageRefsLiveData.removeObserver(pendingImageObserver)
         }
     }
     val modelLabel = remember(refreshToken, messages.size, requesting) {
@@ -277,7 +282,9 @@ fun AiChatRoute(
         thinkingToolbarEnabled = thinkingToolbarEnabled,
         enterToSend = enterToSend,
         compactHeader = compactHeader,
-        actions = actions
+        actions = actions,
+        pendingImageRefs = pendingImageRefs,
+        onRemovePendingImage = { viewModel.removePendingImageRef(it) }
     )
 }
 
@@ -297,7 +304,9 @@ fun AiChatScreen(
     thinkingToolbarEnabled: Boolean,
     enterToSend: Boolean,
     compactHeader: Boolean,
-    actions: AiChatScreenActions
+    actions: AiChatScreenActions,
+    pendingImageRefs: List<String> = emptyList(),
+    onRemovePendingImage: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val style = aiComposeStyle(context)
@@ -550,6 +559,8 @@ fun AiChatScreen(
             enterToSend = enterToSend,
             style = style,
             actions = actions,
+            pendingImageRefs = pendingImageRefs,
+            onRemovePendingImage = onRemovePendingImage,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -1335,19 +1346,37 @@ private fun AiUserMessageRow(
                 modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                AiMarkdownRichText(
-                    text = message.content,
-                    style = style,
-                    color = style.colors.userText
-                )
+                if (message.images.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .padding(bottom = if (message.content.isNotBlank()) 8.dp else 0.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        message.images.forEach { ref ->
+                            key(ref) {
+                                AiSentImageThumb(ref = ref, style = style)
+                            }
+                        }
+                    }
+                }
+                if (message.content.isNotBlank()) {
+                    AiMarkdownRichText(
+                        text = message.content,
+                        style = style,
+                        color = style.colors.userText
+                    )
+                }
                 Row(
                     modifier = Modifier.padding(top = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    AiCopyTextButton(
-                        text = message.content,
-                        style = style
-                    )
+                    if (message.content.isNotBlank()) {
+                        AiCopyTextButton(
+                            text = message.content,
+                            style = style
+                        )
+                    }
                     actions.onDeleteMessage?.let { delete ->
                         AiMessageIconButton(
                             iconRes = R.drawable.ic_outline_delete,
@@ -1365,6 +1394,34 @@ private fun AiUserMessageRow(
             sizeDp = 34
         )
     }
+}
+
+@Composable
+private fun AiSentImageThumb(
+    ref: String,
+    style: AiComposeStyle
+) {
+    val context = LocalContext.current
+    AndroidView(
+        modifier = Modifier
+            .size(96.dp)
+            .clip(RoundedCornerShape(style.metrics.cardRadius))
+            .background(style.colors.toolSurface),
+        factory = {
+            ImageView(it).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }
+        },
+        update = { imageView ->
+            if (imageView.tag != ref) {
+                imageView.tag = ref
+                ImageLoader.load(context, ref)
+                    .centerCrop()
+                    .into(imageView)
+            }
+        },
+        onRelease = { it.releaseComposeImage() }
+    )
 }
 
 @Composable
@@ -1805,12 +1862,17 @@ private fun AiComposer(
     enterToSend: Boolean,
     style: AiComposeStyle,
     actions: AiChatScreenActions,
+    pendingImageRefs: List<String>,
+    onRemovePendingImage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var text by rememberSaveable { mutableStateOf("") }
+    val maxImages = AiChatViewModel.MAX_USER_IMAGES
+    val canPickMore = pendingImageRefs.size < maxImages
     fun submitDraft() {
         val content = text.trim()
-        if (!requesting && content.isNotEmpty() && actions.onSend(content)) {
+        val hasImages = pendingImageRefs.isNotEmpty()
+        if (!requesting && (content.isNotEmpty() || hasImages) && actions.onSend(content, pendingImageRefs)) {
             text = ""
         }
     }
@@ -1821,68 +1883,158 @@ private fun AiComposer(
         tonalElevation = 0.dp,
         shadowElevation = 8.dp
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 44.dp, max = 132.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (text.isBlank()) {
-                    Text(
-                        text = stringResource(R.string.ai_chat_hint),
-                        color = style.colors.secondaryText.copy(alpha = 0.72f),
-                        fontSize = 15.sp
-                    )
-                }
-                BasicTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        imeAction = if (enterToSend) ImeAction.Send else ImeAction.Default
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            if (enterToSend) submitDraft()
+        Column(modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)) {
+            if (pendingImageRefs.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    pendingImageRefs.forEach { ref ->
+                        key(ref) {
+                            AiPendingImageThumb(
+                                ref = ref,
+                                style = style,
+                                onRemove = { onRemovePendingImage(ref) }
+                            )
                         }
-                    ),
-                    textStyle = TextStyle(
-                        color = style.colors.primaryText,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Surface(
-                onClick = {
-                    if (requesting) {
-                        actions.onStop()
-                    } else {
-                        submitDraft()
                     }
-                },
-                enabled = requesting || text.isNotBlank(),
-                shape = CircleShape,
-                color = style.colors.accent,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(
-                            if (requesting) R.drawable.ic_stop_black_24dp else R.drawable.ic_arrow_right
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val onPick = actions.onPickImage
+                val pickEnabled = !requesting && canPickMore && onPick != null
+                if (onPick != null) {
+                    Surface(
+                        onClick = { onPick() },
+                        enabled = pickEnabled,
+                        shape = CircleShape,
+                        color = Color.Transparent
+                    ) {
+                        Box(
+                            modifier = Modifier.size(44.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_image),
+                                contentDescription = null,
+                                tint = if (pickEnabled) style.colors.primaryText else style.colors.secondaryText.copy(alpha = 0.4f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp, max = 132.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (text.isBlank()) {
+                        Text(
+                            text = stringResource(R.string.ai_chat_hint),
+                            color = style.colors.secondaryText.copy(alpha = 0.72f),
+                            fontSize = 15.sp
+                        )
+                    }
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = if (enterToSend) ImeAction.Send else ImeAction.Default
                         ),
-                        contentDescription = stringResource(
-                            if (requesting) R.string.ai_chat_stop else R.string.ai_chat_send
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (enterToSend) submitDraft()
+                            }
                         ),
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                        textStyle = TextStyle(
+                            color = style.colors.primaryText,
+                            fontSize = 15.sp,
+                            lineHeight = 21.sp
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
+                Surface(
+                    onClick = {
+                        if (requesting) {
+                            actions.onStop()
+                        } else {
+                            submitDraft()
+                        }
+                    },
+                    enabled = requesting || text.isNotBlank() || pendingImageRefs.isNotEmpty(),
+                    shape = CircleShape,
+                    color = style.colors.accent,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(
+                                if (requesting) R.drawable.ic_stop_black_24dp else R.drawable.ic_arrow_right
+                            ),
+                            contentDescription = stringResource(
+                                if (requesting) R.string.ai_chat_stop else R.string.ai_chat_send
+                            ),
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiPendingImageThumb(
+    ref: String,
+    style: AiComposeStyle,
+    onRemove: () -> Unit
+) {
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(style.metrics.cardRadius))
+            .background(style.colors.toolSurface)
+    ) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = {
+                ImageView(it).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                }
+            },
+            update = { imageView ->
+                if (imageView.tag != ref) {
+                    imageView.tag = ref
+                    ImageLoader.load(context, ref)
+                        .centerCrop()
+                        .into(imageView)
+                }
+            },
+            onRelease = { it.releaseComposeImage() }
+        )
+        Surface(
+            onClick = onRemove,
+            shape = CircleShape,
+            color = Color.Black.copy(alpha = 0.55f),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(22.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close_x),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
             }
         }
     }
