@@ -37,19 +37,21 @@ object AiImageService {
 
     suspend fun generate(
         prompt: String,
-        provider: AiImageProviderConfig? = null
+        provider: AiImageProviderConfig? = null,
+        size: String? = null
     ): String {
         val target = resolveProvider(provider)
-        return generateRaw(effectivePrompt(prompt, target), target).source
+        return generateRaw(effectivePrompt(prompt, target), target, size).source
     }
 
     suspend fun generateAndStore(
         prompt: String,
         provider: AiImageProviderConfig? = null,
-        metadata: AiImageGalleryManager.ImageMetadata = AiImageGalleryManager.ImageMetadata()
+        metadata: AiImageGalleryManager.ImageMetadata = AiImageGalleryManager.ImageMetadata(),
+        size: String? = null
     ): AiGeneratedImage {
         val target = resolveProvider(provider)
-        val image = generateRaw(effectivePrompt(prompt, target), target)
+        val image = generateRaw(effectivePrompt(prompt, target), target, size)
         return AiImageGalleryManager.saveGeneratedImage(image.source, prompt, target, image.model, metadata)
     }
 
@@ -76,22 +78,30 @@ object AiImageService {
         }
     }
 
-    private suspend fun generateRaw(prompt: String, target: AiImageProviderConfig): ImageGenerationResult {
+    private suspend fun generateRaw(
+        prompt: String,
+        target: AiImageProviderConfig,
+        size: String? = null
+    ): ImageGenerationResult {
         return when (target.type) {
             AiImageProviderConfig.TYPE_JS -> generateByJs(prompt, target)
-            else -> generateByOpenAi(prompt, target)
+            else -> generateByOpenAi(prompt, target, size)
         }
     }
 
-    private suspend fun generateByOpenAi(prompt: String, provider: AiImageProviderConfig): ImageGenerationResult {
+    private suspend fun generateByOpenAi(
+        prompt: String,
+        provider: AiImageProviderConfig,
+        size: String? = null
+    ): ImageGenerationResult {
         val baseUrl = normalizeBaseUrl(provider.baseUrl)
         require(baseUrl.isNotBlank()) { "Base URL is empty" }
         val params = runCatching { JSONObject(provider.defaultParamsJson.ifBlank { "{}" }) }
             .getOrDefault(JSONObject())
         return if (params.optString("endpoint").equals("responses", true)) {
-            generateByResponses(prompt, provider, baseUrl, params)
+            generateByResponses(prompt, provider, baseUrl, params, size)
         } else {
-            generateByImagesApi(prompt, provider, baseUrl, params)
+            generateByImagesApi(prompt, provider, baseUrl, params, size)
         }
     }
 
@@ -99,7 +109,8 @@ object AiImageService {
         prompt: String,
         provider: AiImageProviderConfig,
         baseUrl: String,
-        params: JSONObject
+        params: JSONObject,
+        size: String? = null
     ): ImageGenerationResult {
         val effectiveModel = provider.model
             .ifBlank { params.optString("model").ifBlank { "gpt-image-1" } }
@@ -109,6 +120,8 @@ object AiImageService {
             put("n", 1)
             put("size", "1024x1024")
             mergeJson(params, ignored = setOf("endpoint", "model", "prompt"))
+            // 调用方显式传的 size 优先级最高，覆盖默认值和 defaultParamsJson
+            size?.takeIf { it.isNotBlank() }?.let { put("size", it) }
         }
         val requestUrl = "${baseUrl.trimEnd('/')}/images/generations"
         val startedAt = System.currentTimeMillis()
@@ -145,7 +158,8 @@ object AiImageService {
         prompt: String,
         provider: AiImageProviderConfig,
         baseUrl: String,
-        params: JSONObject
+        params: JSONObject,
+        size: String? = null
     ): ImageGenerationResult {
         val effectiveModel = provider.model
             .ifBlank { params.optString("model").ifBlank { "gpt-5" } }
@@ -156,6 +170,7 @@ object AiImageService {
                 params,
                 ignored = setOf("endpoint", "model", "input", "tools", "stream", "response", "tool")
             )
+            size?.takeIf { it.isNotBlank() }?.let { put("size", it) }
         }
         val payload = JSONObject().apply {
             put("model", effectiveModel)
