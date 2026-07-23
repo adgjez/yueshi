@@ -17,10 +17,7 @@ import io.legado.app.help.source.getShareScope
 import io.legado.app.ui.main.ai.AiImageProviderConfig
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withTimeout
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
-import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 import org.mozilla.javascript.NativeArray
 import org.mozilla.javascript.NativeObject
@@ -61,7 +58,8 @@ object AiImageService {
 
     /**
      * 图生图：基于已有图片 [sourceImageRef]（ai-image://{id}）按 [prompt] 编辑生成新图。
-     * 走 OpenAI 兼容 /images/edits 端点（multipart）。JS provider 不支持，抛错。
+     * 走 OpenAI 兼容 /images/generations 端点，源图以 base64 data url 作为 image 字段传入。
+     * JS provider 不支持，抛错。
      */
     suspend fun editAndStore(
         sourceImageRef: String,
@@ -98,36 +96,36 @@ object AiImageService {
     ): ImageGenerationResult {
         val effectiveModel = provider.model
             .ifBlank { params.optString("model").ifBlank { "gpt-image-1" } }
-        val requestUrl = "${baseUrl.trimEnd('/')}/images/edits"
+        val requestUrl = "${baseUrl.trimEnd('/')}/images/generations"
         val mime = when (sourceFile.extension.lowercase()) {
             "png" -> "image/png"
             "webp" -> "image/webp"
             "gif" -> "image/gif"
             else -> "image/jpeg"
         }
-        val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
-            .addFormDataPart("model", effectiveModel)
-            .addFormDataPart("prompt", prompt)
-            .addFormDataPart("n", "1")
-            .addFormDataPart("size", "1024x1024")
-            .apply {
-                size?.takeIf { it.isNotBlank() }?.let { addFormDataPart("size", it) }
-                params.optString("response_format")?.takeIf { it.isNotBlank() }
-                    ?.let { addFormDataPart("response_format", it) }
-            }
-            .addFormDataPart(
-                "image",
-                sourceFile.name,
-                sourceFile.asRequestBody(mime.toMediaTypeOrNull())
-            )
-            .build()
+        val sourceBase64 = Base64.encodeToString(
+            sourceFile.readBytes(),
+            Base64.NO_WRAP
+        )
+        ensureImageSourceWithinLimit("data:$mime;base64,$sourceBase64")
+        val payload = JSONObject().apply {
+            put("model", effectiveModel)
+            put("prompt", prompt)
+            put("n", 1)
+            put("size", "1024x1024")
+            put("image", "data:$mime;base64,$sourceBase64")
+            mergeJson(params, ignored = setOf("endpoint", "model", "prompt"))
+            // 调用方显式传的 size 优先级最高，覆盖默认值和 defaultParamsJson
+            size?.takeIf { it.isNotBlank() }?.let { put("size", it) }
+        }
         val startedAt = System.currentTimeMillis()
         var status = ""
         try {
             val response = provider.httpClient().newCallResponse {
                 url(requestUrl)
-                post(multipart)
+                postJson(payload.toString())
                 addHeader("Accept", "application/json")
+                addHeader("Content-Type", "application/json")
                 provider.apiKey.takeIf { it.isNotBlank() }?.let {
                     addHeader("Authorization", "Bearer $it")
                 }
