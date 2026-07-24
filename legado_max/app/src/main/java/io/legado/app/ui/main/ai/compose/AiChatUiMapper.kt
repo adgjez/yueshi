@@ -345,6 +345,7 @@ private fun parseAssistantContent(content: String): ParsedAssistantContent {
 private fun AiChatMessage.toInlineImageResult(): AiImageResultUi? {
     val name = statusName.orEmpty()
     if (name != "generate_image" &&
+        name != "edit_image" &&
         name != "generate_book_character_avatar" &&
         name != "set_book_character_avatar_from_gallery"
     ) {
@@ -420,6 +421,16 @@ private fun parseToolDisplayPayload(
                 type = AiToolPreviewType.ImageResult,
                 title = context.getString(R.string.ai_image_generate),
                 summary = image?.prompt?.takeIf { it.isNotBlank() } ?: context.getString(R.string.ai_image_generated),
+                raw = raw,
+                images = listOfNotNull(image)
+            )
+        }
+        "edit_image" -> {
+            val image = parseImageResult(raw)
+            AiToolDisplayPayload(
+                type = AiToolPreviewType.ImageResult,
+                title = "编辑图片",
+                summary = image?.prompt?.takeIf { it.isNotBlank() } ?: "已生成编辑后的图片",
                 raw = raw,
                 images = listOfNotNull(image)
             )
