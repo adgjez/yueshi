@@ -429,8 +429,8 @@ private fun parseToolDisplayPayload(
             val image = parseImageResult(raw)
             AiToolDisplayPayload(
                 type = AiToolPreviewType.ImageResult,
-                title = "编辑图片",
-                summary = image?.prompt?.takeIf { it.isNotBlank() } ?: "已生成编辑后的图片",
+                title = "参考重绘",
+                summary = image?.prompt?.takeIf { it.isNotBlank() } ?: "已基于原图重新生成",
                 raw = raw,
                 images = listOfNotNull(image)
             )

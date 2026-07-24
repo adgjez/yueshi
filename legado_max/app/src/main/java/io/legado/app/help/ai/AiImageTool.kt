@@ -100,11 +100,19 @@ object AiImageTool {
                     put("name", "edit_image")
                     put(
                         "description",
-                        "Edit/modify an existing image based on a prompt. " +
-                            "Use when the user asks to modify, edit, or transform an already-existing image " +
-                            "(e.g. \"把背景换成海滩\", \"去掉图里的文字\", \"让这张图变成水彩风格\"). " +
+                        "Re-generate an image using an existing image as a visual reference. " +
+                            "This is a REFERENCE-BASED REGENERATION, not a precise local edit: " +
+                            "the model treats the source image as inspiration and produces a NEW image, " +
+                            "so composition, pose, background, and details MAY change. " +
+                            "Use when the user wants to derive a new image from an existing one " +
+                            "(e.g. \"参考这张图画一个穿红裙的版本\", \"用这张图的风格画一张类似的\", \"基于这张图重新生成\"). " +
+                            "Do NOT promise the user that only a specific part will change — pose/background/composition may shift. " +
+                            "If the user needs a strict local edit (only change clothes, keep everything else pixel-exact), " +
+                            "tell them the current provider does not support that and suggest using an OpenAI-compatible provider that supports /images/edits. " +
                             "Do NOT use for generating a brand-new image from scratch — use generate_image for that. " +
-                            "The source image is identified by its ai-image:// reference."
+                            "The source image is identified by its ai-image:// reference. " +
+                            "When writing the prompt, describe the FULL desired output (subject + style + composition), " +
+                            "not just the delta — because the whole image is regenerated."
                     )
                     put("parameters", JSONObject().apply {
                         put("type", "object")
@@ -120,7 +128,7 @@ object AiImageTool {
                             })
                             put("prompt", JSONObject().apply {
                                 put("type", "string")
-                                put("description", "Edit instruction describing how to modify the image.")
+                                put("description", "Full description of the desired output image, using the source image as a visual reference. Describe the complete scene (subject, pose, style, background), not just the part to change — the entire image is regenerated.")
                             })
                             put("providerId", JSONObject().apply {
                                 put("type", "string")

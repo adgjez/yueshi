@@ -240,7 +240,7 @@ object AiToolRegistry {
         "capture_web_requests" to "抓包网络请求",
         "search_web_tavily" to "联网搜索",
         "generate_image" to "生成图片",
-        "edit_image" to "编辑图片",
+        "edit_image" to "参考重绘",
         "list_book_characters" to "读取角色资料",
         "upsert_book_character" to "新增或更新角色",
         "delete_book_character" to "删除角色",
