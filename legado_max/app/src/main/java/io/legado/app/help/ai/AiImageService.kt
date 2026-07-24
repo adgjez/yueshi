@@ -105,16 +105,25 @@ object AiImageService {
             else -> "image/jpeg"
         }
         val sourceBase64 = Base64.encodeToString(sourceFile.readBytes(), Base64.NO_WRAP)
-        ensureImageSourceWithinLimit("data:$mime;base64,$sourceBase64")
+        val dataUri = "data:$mime;base64,$sourceBase64"
+        ensureImageSourceWithinLimit(dataUri)
+        // agnes-image-2.1-flash 图生图规范（见 https://wiki.agnes-ai.com/zh-Hans/docs/agnes-image-21-flash）：
+        // - image 必须放在 extra_body.image 数组里，不能放顶层
+        // - 图生图用 extra_body.response_format: "b64_json" 返回
+        // - 图生图不需要 tags:["img2img"]
+        // - prompt 应包含 "preserving the original composition" 类语义以保构图
         val payload = JSONObject().apply {
             put("model", effectiveModel)
             put("prompt", prompt)
-            put("n", 1)
             put("size", "1024x1024")
-            put("image", "data:$mime;base64,$sourceBase64")
-            mergeJson(params, ignored = setOf("endpoint", "model", "prompt"))
+            // defaultParamsJson 里可能带 ratio 等 agnes 专属参数；排除会冲突的字段
+            mergeJson(params, ignored = setOf("endpoint", "model", "prompt", "image", "extra_body", "n"))
             // 调用方显式传的 size 优先级最高，覆盖默认值和 defaultParamsJson
             size?.takeIf { it.isNotBlank() }?.let { put("size", it) }
+            put("extra_body", JSONObject().apply {
+                put("image", JSONArray().put(dataUri))
+                put("response_format", "b64_json")
+            })
         }
         val startedAt = System.currentTimeMillis()
         var status = ""
